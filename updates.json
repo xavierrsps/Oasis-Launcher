@@ -1,0 +1,14 @@
+{
+  "updates": [
+    {
+      "date": "2026-07-13",
+      "title": "Welcome to Oasis",
+      "body": "The launcher is live. Edit this file on the VPS/portal and it refreshes in every player's launcher the next time they open it."
+    },
+    {
+      "date": "2026-07-12",
+      "title": "Server online",
+      "body": "Oasis is now running on the live world. Donations, Grand Exchange, and all bosses are up."
+    }
+  ]
+}
