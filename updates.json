@@ -2,8 +2,8 @@
   "updates": [
     {
       "date": "2026-07-14",
-      "title": "Launcher v1.0.1",
-      "body": "The client now always shows as 'Oasis Client' in the Windows taskbar right-click menu."
+      "title": "Launcher v1.0.2",
+      "body": "The client now always shows as 'Oasis Client' in the Windows taskbar, and the launcher starts more reliably."
     },
     {
       "date": "2026-07-13",
