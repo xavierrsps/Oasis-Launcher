@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.exe",
-  "notes": "Initial release."
+  "notes": "Fixes the Windows taskbar right-click showing the old client name; now always shows 'Oasis Client'."
 }
