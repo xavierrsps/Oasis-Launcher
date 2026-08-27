@@ -1,6 +1,7 @@
 package com.oasis.launcher.update;
 
 import com.google.gson.Gson;
+import com.oasis.launcher.model.DiscordConfig;
 import com.oasis.launcher.model.NewsFeed;
 import com.oasis.launcher.model.ServerStatus;
 import com.oasis.launcher.model.VersionInfo;
@@ -36,6 +37,7 @@ public class ManifestFetcher {
     public static final String VERSION_URL = RAW_BASE + "version.json";
     public static final String NEWS_URL    = RAW_BASE + "updates.json";
     public static final String STATUS_URL  = RAW_BASE + "status.json";
+    public static final String DISCORD_URL = RAW_BASE + "discord.json";
 
     private final HttpClient http;
     private final Gson gson = new Gson();
@@ -66,6 +68,11 @@ public class ManifestFetcher {
 
     public ServerStatus fetchStatus() throws IOException, InterruptedException {
         return gson.fromJson(fetch(STATUS_URL), ServerStatus.class);
+    }
+
+    /** Discord integration config (verify + invite URLs). */
+    public DiscordConfig fetchDiscordConfig() throws IOException, InterruptedException {
+        return gson.fromJson(fetch(DISCORD_URL), DiscordConfig.class);
     }
 
     private String fetch(String url) throws IOException, InterruptedException {

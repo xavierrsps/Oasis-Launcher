@@ -57,3 +57,49 @@ editing or deleting a post in Discord is reflected on the next sync. The per-bas
 from `discord_sync.json` (falls back to whatever's already in the feed file).
 
 Forum-style channels (threads) aren't handled yet — this reads standard text/announcement channels.
+
+---
+
+# Discord account linking (OTP) — `oasis_link_bot.py`
+
+Powers the launcher's **Log in with Discord** button. Flow:
+
+1. In the launcher, **Log in with Discord** → an OTP box opens.
+2. In Discord, the user runs **/link** (or DMs the bot the word `link`) → the bot **DMs a 6-digit code**.
+3. They type the code in the launcher → the launcher calls the bot's **/verify** endpoint → linked.
+4. A green **✓ Verified** shows and the button becomes a small Discord square that opens Discord.
+
+## Verify contract (language-agnostic)
+
+The launcher only needs this one endpoint — implement it in `oasis_link_bot.py`, in your existing bot,
+or in any language:
+
+```
+POST <verifyUrl>            Content-Type: application/json
+    body:    {"code": "123456"}
+    200 OK:  {"ok": true, "id": "<discordUserId>", "username": "<name>", "avatar": "<url or null>"}
+    else:    {"ok": false, "error": "..."}          (or any non-2xx)
+```
+Codes are single-use and short-lived (default 10 min). `oasis_link_bot.py` is a complete reference: a
+`/link` command that DMs the code + this endpoint, sharing one in-memory code table.
+
+## Running the reference bot
+
+```bash
+pip install discord.py
+$env:DISCORD_TOKEN = "your-bot-token"
+python tools/oasis_link_bot.py
+```
+
+The `/link` slash command needs no privileged intent; the DM-`link` trigger needs the **Message Content**
+intent. On your **VPS**, run it behind TLS (e.g. an nginx reverse proxy terminating HTTPS on your domain),
+then set the repo's **`discord.json`**:
+
+```json
+{ "verifyUrl": "https://your-domain/verify", "inviteUrl": "https://discord.gg/your-invite" }
+```
+
+The launcher reads `discord.json` live, so pointing it at your VPS is a repo edit — **no launcher
+release needed.** Until `verifyUrl` is set, the launcher shows the button + OTP box but reports that
+linking isn't switched on yet.
+

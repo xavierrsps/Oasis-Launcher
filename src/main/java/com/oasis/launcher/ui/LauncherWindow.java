@@ -3,8 +3,12 @@ package com.oasis.launcher.ui;
 import com.oasis.launcher.DevMode;
 import com.oasis.launcher.account.AccountStore;
 import com.oasis.launcher.account.CredentialStore;
+import com.oasis.launcher.account.DiscordLinkStore;
+import com.oasis.launcher.account.DiscordVerifier;
 import com.oasis.launcher.launch.ClientLauncher;
 import com.oasis.launcher.model.Account;
+import com.oasis.launcher.model.DiscordConfig;
+import com.oasis.launcher.model.DiscordLink;
 import com.oasis.launcher.model.NewsFeed;
 import com.oasis.launcher.model.ServerStatus;
 import com.oasis.launcher.model.VersionInfo;
@@ -44,6 +48,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -89,6 +94,8 @@ public class LauncherWindow {
     private final ClientLauncher gameLauncher = new ClientLauncher();
     private final AccountStore accountStore = new AccountStore();
     private final CredentialStore credentialStore = new CredentialStore();
+    private final DiscordLinkStore discordLinkStore = new DiscordLinkStore();
+    private final DiscordVerifier discordVerifier = new DiscordVerifier();
     private final ScheduledExecutorService background = Executors.newScheduledThreadPool(2, r -> {
         Thread t = new Thread(r, "launcher-bg");
         t.setDaemon(true);
@@ -107,6 +114,10 @@ public class LauncherWindow {
     private GameBase selectedBase;
     private Label baseStatusLabel;
     private final List<TabHandle> tabs = new ArrayList<>();
+
+    private DiscordLink discordLink;
+    private DiscordConfig discordConfig;
+    private VBox discordArea;
 
     /** The game bases shown as tabs. Both "coming soon" for now; flip {@code live} when one launches. */
     private final List<GameBase> bases = List.of(
@@ -148,6 +159,7 @@ public class LauncherWindow {
 
     public void show() {
         Fonts.load();
+        discordLink = discordLinkStore.get().orElse(null);
         selectedBase = bases.get(0);
         root = new BorderPane();
         root.setStyle("-fx-background-color: " + BG + ";");
@@ -193,6 +205,21 @@ public class LauncherWindow {
 
         refreshStatus();
         startUpdateCheck();
+        loadDiscordConfig();
+    }
+
+    private void loadDiscordConfig() {
+        background.submit(() -> {
+            try {
+                DiscordConfig cfg = fetcher.fetchDiscordConfig();
+                Platform.runLater(() -> {
+                    discordConfig = cfg;
+                    renderDiscordArea();   // invite button becomes live once we know the URL
+                });
+            } catch (Exception ex) {
+                logger.debug("No discord.json yet ({}) — Discord button stays available.", ex.getMessage());
+            }
+        });
     }
 
     // ── Top bar: game tabs + account + logo ─────────────────────────────────
@@ -503,12 +530,7 @@ public class LauncherWindow {
         Region grow = new Region();
         VBox.setVgrow(grow, Priority.ALWAYS);
 
-        Button discord = new Button("Log in with Discord");
-        discord.setFont(Fonts.semi(12.5));
-        discord.setMaxWidth(Double.MAX_VALUE);
-        discord.setStyle("-fx-background-color: " + DISCORD + "; -fx-text-fill: white; -fx-background-radius: 9;"
-                + " -fx-cursor: hand; -fx-padding: 11;");
-        discord.setOnAction(e -> onDiscordLogin());
+        Region discord = buildDiscordArea();
 
         if (base.live) {
             playButton = new Button("PLAY");
@@ -875,12 +897,205 @@ public class LauncherWindow {
         }
     }
 
-    private void onDiscordLogin() {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Discord sign-in");
-        a.setHeaderText("Discord sign-in is being wired up.");
-        a.setContentText("Once the Discord app's Client ID is in, this opens Discord to sign you in.");
-        a.showAndWait();
+    // ── Discord link (OTP verify) ───────────────────────────────────────────
+
+    /** Discord "Clyde" logo path (simple-icons), drawn as an SVGPath so no image asset is needed. */
+    private static final String DISCORD_PATH = "M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0"
+            + " 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868"
+            + " 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0"
+            + " 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824"
+            + " 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0"
+            + " 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0"
+            + " 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0"
+            + " 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933"
+            + " 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0"
+            + " 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0"
+            + " 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067"
+            + " 3.9495-1.5219 6.0023-3.0294a.077.077 0"
+            + " 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0"
+            + " 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189"
+            + " 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569"
+            + " 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189"
+            + " 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z";
+
+    private Region buildDiscordArea() {
+        discordArea = new VBox(8);
+        discordArea.setMaxWidth(Double.MAX_VALUE);
+        renderDiscordArea();
+        return discordArea;
+    }
+
+    private Node discordGlyph(double size, String fillHex) {
+        SVGPath p = new SVGPath();
+        p.setContent(DISCORD_PATH);
+        p.setFill(Color.web(fillHex));
+        double s = size / 24.0;
+        p.setScaleX(s);
+        p.setScaleY(s);
+        StackPane wrap = new StackPane(p);
+        wrap.setMinSize(size, size);
+        wrap.setPrefSize(size, size);
+        wrap.setMaxSize(size, size);
+        return wrap;
+    }
+
+    private void renderDiscordArea() {
+        if (discordArea == null) {
+            return;
+        }
+        discordArea.getChildren().setAll(discordLink != null ? buildVerifiedRow() : buildLoginButton());
+    }
+
+    private Region buildLoginButton() {
+        Label text = new Label("Log in with Discord");
+        text.setFont(Fonts.semi(12.5));
+        text.setStyle("-fx-text-fill: white;");
+        HBox btn = new HBox(9, discordGlyph(18, "white"), text);
+        btn.setAlignment(Pos.CENTER);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setPrefHeight(40);
+        String base = "-fx-background-color: " + DISCORD + "; -fx-background-radius: 9; -fx-cursor: hand;";
+        String hov = "-fx-background-color: #6b76f5; -fx-background-radius: 9; -fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(hov));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+        btn.setOnMouseClicked(e -> showOtpEntry());
+        return btn;
+    }
+
+    private void showOtpEntry() {
+        Label hint = new Label("In Discord, message the Oasis bot to get a one-time code, then enter it here.");
+        hint.setFont(Fonts.body(11));
+        hint.setStyle("-fx-text-fill: " + DIM + ";");
+        hint.setWrapText(true);
+
+        TextField code = new TextField();
+        code.setPromptText("Enter code");
+        code.setFont(Fonts.body(14));
+        code.setStyle(dropdownStyle() + " -fx-text-fill: " + TEXT + "; -fx-highlight-fill: " + GOLD_DIM
+                + "; -fx-padding: 8 10 8 10;");
+
+        Label err = new Label();
+        err.setFont(Fonts.body(11));
+        err.setStyle("-fx-text-fill: #e08a6a;");
+        err.setWrapText(true);
+        err.setManaged(false);
+        err.setVisible(false);
+
+        Button verify = new Button("Verify");
+        verify.setFont(Fonts.semi(12.5));
+        verify.setMaxWidth(Double.MAX_VALUE);
+        verify.setPrefHeight(36);
+        verify.setStyle("-fx-background-color: " + DISCORD + "; -fx-text-fill: white; -fx-background-radius: 9;"
+                + " -fx-cursor: hand;");
+        Runnable submit = () -> doVerify(code.getText(), verify, err);
+        verify.setOnAction(e -> submit.run());
+        code.setOnAction(e -> submit.run());
+
+        Label getCode = new Label("Get a code in Discord →");
+        getCode.setFont(Fonts.body(11));
+        getCode.setStyle("-fx-text-fill: #9aa4f5; -fx-cursor: hand;");
+        getCode.setOnMouseClicked(e -> openDiscord());
+        Label cancel = new Label("Cancel");
+        cancel.setFont(Fonts.body(11));
+        cancel.setStyle("-fx-text-fill: " + DIM2 + "; -fx-cursor: hand;");
+        cancel.setOnMouseClicked(e -> renderDiscordArea());
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox links = new HBox(getCode, gap, cancel);
+        links.setAlignment(Pos.CENTER_LEFT);
+
+        discordArea.getChildren().setAll(hint, code, err, verify, links);
+        code.requestFocus();
+    }
+
+    private void doVerify(String codeText, Button verify, Label err) {
+        String code = codeText == null ? "" : codeText.trim();
+        if (code.isEmpty()) {
+            return;
+        }
+        err.setVisible(false);
+        err.setManaged(false);
+        verify.setDisable(true);
+        verify.setText("Checking…");
+        final String verifyUrl = discordConfig != null ? discordConfig.verifyUrl : null;
+        background.submit(() -> {
+            String message = null;
+            DiscordLink link = null;
+            try {
+                link = discordVerifier.verify(verifyUrl, code).orElse(null);
+                if (link == null) {
+                    message = "That code didn't match. Grab a fresh one from the bot and try again.";
+                }
+            } catch (IllegalStateException notReady) {
+                message = "Discord linking isn't switched on yet — check back soon.";
+            } catch (Exception ex) {
+                message = "Couldn't reach the verify service. Try again in a moment.";
+            }
+            final String fMsg = message;
+            final DiscordLink fLink = link;
+            Platform.runLater(() -> {
+                if (fLink != null) {
+                    discordLink = fLink;
+                    discordLinkStore.save(fLink);
+                    renderDiscordArea();
+                } else {
+                    verify.setDisable(false);
+                    verify.setText("Verify");
+                    err.setText(fMsg);
+                    err.setManaged(true);
+                    err.setVisible(true);
+                }
+            });
+        });
+    }
+
+    private Region buildVerifiedRow() {
+        Label tick = new Label("✓");
+        tick.setFont(Fonts.bold(13));
+        tick.setStyle("-fx-text-fill: " + TEAL + ";");
+        Label who = new Label("Verified" + (discordLink.username != null ? " · " + discordLink.username : ""));
+        who.setFont(Fonts.semi(12));
+        who.setStyle("-fx-text-fill: " + TEXT + ";");
+        HBox line = new HBox(6, tick, who);
+        line.setAlignment(Pos.CENTER_LEFT);
+
+        Label unlink = new Label("Unlink");
+        unlink.setFont(Fonts.body(10.5));
+        unlink.setStyle("-fx-text-fill: " + DIM2 + "; -fx-cursor: hand;");
+        unlink.setOnMouseClicked(e -> {
+            discordLink = null;
+            discordLinkStore.clear();
+            renderDiscordArea();
+        });
+        VBox txt = new VBox(2, line, unlink);
+
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+
+        StackPane square = new StackPane(discordGlyph(20, "white"));
+        square.setMinSize(38, 38);
+        square.setPrefSize(38, 38);
+        square.setMaxSize(38, 38);
+        String sBase = "-fx-background-color: " + DISCORD + "; -fx-background-radius: 9; -fx-cursor: hand;";
+        String sHov = "-fx-background-color: #6b76f5; -fx-background-radius: 9; -fx-cursor: hand;";
+        square.setStyle(sBase);
+        square.setOnMouseEntered(e -> square.setStyle(sHov));
+        square.setOnMouseExited(e -> square.setStyle(sBase));
+        square.setOnMouseClicked(e -> openDiscord());
+
+        HBox row = new HBox(10, txt, gap, square);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setStyle("-fx-background-color: rgba(88,101,242,0.10); -fx-background-radius: 10;"
+                + " -fx-border-color: rgba(88,101,242,0.40); -fx-border-radius: 10; -fx-padding: 8 10 8 10;");
+        return row;
+    }
+
+    private void openDiscord() {
+        String url = (discordConfig != null && discordConfig.inviteUrl != null && !discordConfig.inviteUrl.isBlank())
+                ? discordConfig.inviteUrl
+                : "https://discord.com/app";
+        openLink(url);
     }
 
     // ── Server status ───────────────────────────────────────────────────────

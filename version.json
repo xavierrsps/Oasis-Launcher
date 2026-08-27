@@ -1,5 +1,5 @@
 {
-  "version": "2.0.7",
+  "version": "2.0.8",
   "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
-  "notes": "Themed the Windows title bar (dark brown + gold). Installs over the old one and reopens itself."
+  "notes": "Discord account linking via one-time code (green Verified tick + Discord-square button). Installs over the old one and reopens itself."
 }
