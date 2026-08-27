@@ -11,3 +11,8 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Discord sync — real config holds the bot token; never commit it
+/tools/discord_sync.json
+__pycache__/
+*.pyc

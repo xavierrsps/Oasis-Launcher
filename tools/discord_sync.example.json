@@ -1,0 +1,19 @@
+{
+  "_comment": "Copy this file to tools/discord_sync.json and fill it in. The real file is git-ignored so the token never gets committed. You can also leave token empty here and set the OASIS_DISCORD_TOKEN environment variable instead (recommended).",
+  "token": "PASTE_BOT_TOKEN_HERE_OR_USE_OASIS_DISCORD_TOKEN_ENV",
+  "repo": "xavierrsps/Oasis-Launcher",
+  "branch": "main",
+  "limit": 8,
+  "rehost_images": true,
+  "push": true,
+  "bases": {
+    "oasis3": {
+      "channel_id": "PASTE_OASIS3_CHANNEL_ID",
+      "status": "In production, working on rev949."
+    },
+    "oasisos": {
+      "channel_id": "PASTE_OASISOS_CHANNEL_ID",
+      "status": "Migrating content, releasing soon."
+    }
+  }
+}
