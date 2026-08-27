@@ -184,6 +184,13 @@ public class LauncherWindow {
         fadeIn.setToValue(1.0);
         fadeIn.play();
 
+        // Paint the native Windows title bar in the theme (Win11; silent no-op elsewhere). Re-apply once
+        // shortly after in case the first call lands before the native window has fully settled.
+        WindowsChrome.applyDarkCaption("Oasis Launcher", 0x1C1409, 0xF4B53F, 0x3A2C17);
+        background.schedule(
+                () -> WindowsChrome.applyDarkCaption("Oasis Launcher", 0x1C1409, 0xF4B53F, 0x3A2C17),
+                400, TimeUnit.MILLISECONDS);
+
         refreshStatus();
         startUpdateCheck();
     }

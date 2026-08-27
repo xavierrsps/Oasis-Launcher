@@ -1,5 +1,5 @@
 {
-  "version": "2.0.6",
+  "version": "2.0.7",
   "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
-  "notes": "Fixed hero banner (full logo, not a cropped slice) and update cards wrapping instead of being cut off. Installs over the old one and reopens itself."
+  "notes": "Themed the Windows title bar (dark brown + gold). Installs over the old one and reopens itself."
 }
