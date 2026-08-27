@@ -1,5 +1,5 @@
 {
-  "version": "2.0.2",
+  "version": "2.0.3",
   "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
-  "notes": "Redesigned launcher (Jagex feel, OSRS brown/gold, Discord-fed updates). Installs over the old one and reopens itself."
+  "notes": "Polished launcher: game-tab emblems, animated card hovers, blurred logo hero, PLAY glow, fade-in. Installs over the old one and reopens itself."
 }

@@ -10,10 +10,14 @@ import com.oasis.launcher.model.ServerStatus;
 import com.oasis.launcher.model.VersionInfo;
 import com.oasis.launcher.update.LauncherSelfUpdater;
 import com.oasis.launcher.update.ManifestFetcher;
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -26,6 +30,8 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -36,10 +42,13 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -125,6 +134,11 @@ public class LauncherWindow {
         stage.setOnCloseRequest(e -> background.shutdownNow());
         stage.show();
 
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(300), root);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
+
         refreshStatus();
         loadNews();
         startUpdateCheck();
@@ -136,9 +150,9 @@ public class LauncherWindow {
         HBox games = new HBox(2);
         games.setAlignment(Pos.CENTER_LEFT);
         games.getChildren().addAll(
-                gameTab("Oasis", true, this::selectOasis),
-                gameTab("RuneScape", false, () -> comingSoon("RuneScape 3")),
-                gameTab("Old School", false, () -> comingSoon("Old School base")));
+                gameTab(oasisEmblem(), "Oasis", true, this::selectOasis),
+                gameTab(monogramEmblem("RS", "#f0cf67", "#a9781f"), "RuneScape", false, () -> comingSoon("RuneScape 3")),
+                gameTab(monogramEmblem("OS", "#9adfa6", "#3f7d4e"), "Old School", false, () -> comingSoon("Old School base")));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -169,25 +183,77 @@ public class LauncherWindow {
         return box;
     }
 
-    private Button gameTab(String label, boolean active, Runnable onClick) {
-        Button b = new Button(label);
-        b.setFont(Font.font("System", FontWeight.BOLD, 14));
-        b.setMinHeight(66);
-        b.setPrefHeight(66);
-        b.setPadding(new Insets(0, 17, 0, 17));
-        b.setStyle(gameTabStyle(active));
-        b.setOnAction(e -> onClick.run());
-        return b;
+    private Region gameTab(Node emblem, String label, boolean active, Runnable onClick) {
+        Label text = new Label(label);
+        text.setFont(Font.font("System", FontWeight.BOLD, 14));
+        text.setStyle("-fx-text-fill: " + (active ? GOLD_HI : DIM) + ";");
+
+        HBox tab = new HBox(9);
+        tab.setAlignment(Pos.CENTER_LEFT);
+        if (emblem != null) {
+            tab.getChildren().add(emblem);
+        }
+        tab.getChildren().add(text);
+        tab.setMinHeight(66);
+        tab.setPrefHeight(66);
+        tab.setPadding(new Insets(0, 17, 0, 17));
+        tab.setStyle(gameTabStyle(active));
+        tab.setOnMouseClicked(e -> onClick.run());
+        if (!active) {
+            if (emblem != null) {
+                emblem.setOpacity(0.82);
+            }
+            tab.setOnMouseEntered(e -> {
+                text.setStyle("-fx-text-fill: " + TEXT + ";");
+                tab.setStyle(gameTabStyleHover());
+                if (emblem != null) {
+                    emblem.setOpacity(1.0);
+                }
+            });
+            tab.setOnMouseExited(e -> {
+                text.setStyle("-fx-text-fill: " + DIM + ";");
+                tab.setStyle(gameTabStyle(false));
+                if (emblem != null) {
+                    emblem.setOpacity(0.82);
+                }
+            });
+        }
+        return tab;
     }
 
     private String gameTabStyle(boolean active) {
         if (active) {
             return "-fx-background-color: linear-gradient(to bottom, rgba(244,181,63,0.04), rgba(244,181,63,0.12));"
-                    + " -fx-text-fill: " + GOLD_HI + "; -fx-border-color: transparent transparent " + GOLD + " transparent;"
+                    + " -fx-border-color: transparent transparent " + GOLD + " transparent;"
                     + " -fx-border-width: 0 0 3 0; -fx-cursor: hand;";
         }
-        return "-fx-background-color: transparent; -fx-text-fill: " + DIM + ";"
-                + " -fx-border-color: transparent; -fx-cursor: hand;";
+        return "-fx-background-color: transparent; -fx-border-color: transparent; -fx-cursor: hand;";
+    }
+
+    private String gameTabStyleHover() {
+        return "-fx-background-color: linear-gradient(to bottom, transparent, rgba(244,181,63,0.08));"
+                + " -fx-border-color: transparent transparent " + GOLD_DIM + " transparent;"
+                + " -fx-border-width: 0 0 3 0; -fx-cursor: hand;";
+    }
+
+    /** The Oasis tab shows the real gold-O icon; falls back to a monogram badge if the image is missing. */
+    private Node oasisEmblem() {
+        ImageView iv = loadImage("/images/icon.png", 24, 24);
+        return iv != null ? iv : monogramEmblem("O", GOLD_HI, EMBER);
+    }
+
+    /** A small circular game emblem drawn in code (guaranteed to render, no bundled image needed). */
+    private Region monogramEmblem(String letters, String c1, String c2) {
+        Label l = new Label(letters);
+        l.setAlignment(Pos.CENTER);
+        l.setMinSize(24, 24);
+        l.setPrefSize(24, 24);
+        l.setMaxSize(24, 24);
+        l.setFont(Font.font("System", FontWeight.BOLD, letters.length() > 1 ? 9.5 : 12));
+        l.setStyle("-fx-text-fill: #1c1206; -fx-background-radius: 12;"
+                + " -fx-background-color: radial-gradient(center 34% 28%, radius 72%, " + c1 + ", " + c2 + ");"
+                + " -fx-border-color: rgba(0,0,0,0.4); -fx-border-radius: 12;");
+        return l;
     }
 
     private Label chip(String text) {
@@ -201,7 +267,7 @@ public class LauncherWindow {
 
     private Region buildBody() {
         VBox content = new VBox(0);
-        content.setPadding(new Insets(18, 20, 22, 20));
+        content.setPadding(new Insets(18, 30, 24, 22));
         content.getChildren().add(buildHero());
         content.getChildren().add(buildUpdatesHeader());
         newsGrid = new FlowPane(13, 13);
@@ -223,41 +289,56 @@ public class LauncherWindow {
 
     private Region buildHero() {
         StackPane hero = new StackPane();
-        hero.setMinHeight(190);
-        hero.setPrefHeight(190);
-        hero.setStyle("-fx-background-radius: 13; -fx-border-color: " + LINE2 + "; -fx-border-radius: 13;");
-        ImageView bg = loadImage("/images/background.png", 700, -1);
+        hero.setMinHeight(198);
+        hero.setPrefHeight(198);
+        hero.setStyle("-fx-background-color: #17100a;");
+
+        // The logo, blurred + darkened, as an ambient backdrop (Xavier's "logo but blurred").
+        ImageView bg = loadImage("/images/background.png", -1, -1);
         if (bg != null) {
             bg.setPreserveRatio(true);
-            StackPane clip = new StackPane(bg);
-            clip.setStyle("-fx-background-radius: 13;");
-            clip.setMinHeight(190);
-            clip.setMaxHeight(190);
-            hero.getChildren().add(clip);
+            bg.setFitWidth(940);
+            bg.setEffect(new GaussianBlur(28));
+            StackPane.setAlignment(bg, Pos.CENTER);
+            hero.getChildren().add(bg);
         }
+
         Region tint = new Region();
-        tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(10,7,4,0.9) 0%, rgba(10,7,4,0.3) 55%, transparent);"
-                + " -fx-background-radius: 13;");
+        tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(9,6,3,0.95) 0%, rgba(9,6,3,0.64) 46%, rgba(9,6,3,0.24) 100%);");
         hero.getChildren().add(tint);
 
         Label kick = new Label("NEW BASE · LIVE NOW");
         kick.setFont(Font.font("System", FontWeight.BOLD, 10.5));
+        kick.setMaxWidth(Region.USE_PREF_SIZE);
         kick.setStyle("-fx-text-fill: #2a1a06; -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD
                 + "); -fx-padding: 3 9 3 9; -fx-background-radius: 5;");
         Label title = new Label("Oasis 2.0 — reforged on Old School");
-        title.setFont(Font.font("System", FontWeight.BOLD, 26));
+        title.setFont(Font.font("System", FontWeight.BOLD, 27));
         title.setStyle("-fx-text-fill: white;");
         title.setWrapText(true);
+        title.setEffect(new DropShadow(8, Color.rgb(0, 0, 0, 0.7)));
         Label sub = new Label("A modern RuneScape (rev 240) foundation with a custom RuneLite client.");
         sub.setFont(Font.font("System", 13));
         sub.setStyle("-fx-text-fill: #e9dcc0;");
-        VBox txt = new VBox(8, kick, title, sub);
+        sub.setWrapText(true);
+        VBox txt = new VBox(9, kick, title, sub);
         txt.setAlignment(Pos.BOTTOM_LEFT);
-        txt.setMaxWidth(440);
-        txt.setPadding(new Insets(22, 24, 22, 24));
+        txt.setMaxWidth(470);
+        txt.setPadding(new Insets(22, 24, 22, 26));
         StackPane.setAlignment(txt, Pos.BOTTOM_LEFT);
         hero.getChildren().add(txt);
-        return hero;
+
+        // Round the whole banner and give it a soft drop shadow.
+        Rectangle clip = new Rectangle();
+        clip.setArcWidth(26);
+        clip.setArcHeight(26);
+        clip.widthProperty().bind(hero.widthProperty());
+        clip.heightProperty().bind(hero.heightProperty());
+        hero.setClip(clip);
+
+        StackPane wrap = new StackPane(hero);
+        wrap.setEffect(new DropShadow(16, Color.rgb(0, 0, 0, 0.5)));
+        return wrap;
     }
 
     private Region buildUpdatesHeader() {
@@ -309,9 +390,32 @@ public class LauncherWindow {
         playButton.setMaxWidth(Double.MAX_VALUE);
         playButton.setPrefHeight(54);
         playButton.setFont(Font.font("System", FontWeight.BOLD, 21));
-        playButton.setStyle("-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
-                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;");
+        String playBase = "-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
+                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
+        String playHover = "-fx-background-color: linear-gradient(to bottom, #ffe7b0, " + GOLD_HI + " 52%, " + GOLD
+                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
+        playButton.setStyle(playBase);
         playButton.setOnAction(e -> onPlay());
+        ScaleTransition playScale = new ScaleTransition(Duration.millis(120), playButton);
+        playButton.setOnMouseEntered(e -> {
+            if (playButton.isDisabled()) {
+                return;
+            }
+            playButton.setStyle(playHover);
+            playButton.setEffect(new DropShadow(20, Color.rgb(244, 181, 63, 0.55)));
+            playScale.stop();
+            playScale.setToX(1.03);
+            playScale.setToY(1.03);
+            playScale.play();
+        });
+        playButton.setOnMouseExited(e -> {
+            playButton.setStyle(playBase);
+            playButton.setEffect(null);
+            playScale.stop();
+            playScale.setToX(1.0);
+            playScale.setToY(1.0);
+            playScale.play();
+        });
 
         ComboBox<String> client = new ComboBox<>(FXCollections.observableArrayList("RuneLite"));
         client.getSelectionModel().selectFirst();
@@ -448,10 +552,9 @@ public class LauncherWindow {
 
     private Region buildCard(NewsFeed.Update u) {
         VBox card = new VBox();
-        card.setPrefWidth(322);
-        card.setMinWidth(300);
-        card.setStyle("-fx-background-color: linear-gradient(to bottom, " + PANEL + ", #241a0e);"
-                + " -fx-background-radius: 12; -fx-border-color: " + LINE + "; -fx-border-radius: 12;");
+        card.setPrefWidth(314);
+        card.setMinWidth(290);
+        card.setStyle(cardStyle(false));
 
         if (u.image != null && !u.image.isBlank()) {
             ImageView img = new ImageView(new Image(u.image, 322, 104, false, true, true));
@@ -497,7 +600,52 @@ public class LauncherWindow {
         body.getChildren().add(foot);
 
         card.getChildren().add(body);
+
+        // Real hover animation (JavaFX ignores CSS :hover transitions — must be done in code):
+        // a smooth lift + a warm gold glow, reversing on exit.
+        DropShadow rest = new DropShadow(14, Color.rgb(0, 0, 0, 0.5));
+        DropShadow hot = new DropShadow(24, Color.rgb(244, 181, 63, 0.34));
+        card.setEffect(rest);
+        TranslateTransition lift = new TranslateTransition(Duration.millis(150), card);
+        card.setOnMouseEntered(e -> {
+            card.setStyle(cardStyle(true));
+            card.setEffect(hot);
+            lift.stop();
+            lift.setToY(-6);
+            lift.play();
+        });
+        card.setOnMouseExited(e -> {
+            card.setStyle(cardStyle(false));
+            card.setEffect(rest);
+            lift.stop();
+            lift.setToY(0);
+            lift.play();
+        });
+        if (u.link != null && !u.link.isBlank()) {
+            card.setOnMouseClicked(e -> openLink(u.link));
+        }
         return card;
+    }
+
+    private String cardStyle(boolean hover) {
+        String top = hover ? "#33260f" : PANEL;
+        String border = hover ? LINE2 : LINE;
+        return "-fx-background-color: linear-gradient(to bottom, " + top + ", #241a0e);"
+                + " -fx-background-radius: 12; -fx-border-color: " + border + "; -fx-border-radius: 12; -fx-cursor: hand;";
+    }
+
+    /** Open a URL in the user's default browser (Windows shell, no java.desktop dependency). */
+    private void openLink(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        background.submit(() -> {
+            try {
+                new ProcessBuilder("cmd", "/c", "start", "", url).start();
+            } catch (Exception ex) {
+                logger.warn("Could not open link {}: {}", url, ex.getMessage());
+            }
+        });
     }
 
     private Region avatarNode(String author, String avatarUrl) {
