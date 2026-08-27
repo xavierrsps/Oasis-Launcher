@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.exe",
-  "notes": "Client now always shows as 'Oasis Client' in the Windows taskbar, plus a launcher reliability fix."
+  "version": "2.0.0",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
+  "notes": "New OSRS RuneLite base — redesigned launcher: your real Oasis logo, blurred backdrop, gold theme, Discord sign-in, and it self-updates itself from here on."
 }
