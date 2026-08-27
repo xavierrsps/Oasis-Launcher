@@ -21,6 +21,9 @@ import java.util.List;
  */
 public class NewsFeed {
 
+    /** Optional per-base current-status line (e.g. "In production, working on rev949."). */
+    public String status;
+
     public List<Update> updates;
 
     public static class Update {

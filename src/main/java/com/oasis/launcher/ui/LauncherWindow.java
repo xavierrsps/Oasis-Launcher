@@ -53,6 +53,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -104,12 +105,52 @@ public class LauncherWindow {
     private FlowPane newsGrid;
     private ComboBox<Account> accountDropdown;
 
+    private BorderPane root;
+    private GameBase selectedBase;
+    private Label baseStatusLabel;
+    private final List<TabHandle> tabs = new ArrayList<>();
+
+    /** The game bases shown as tabs. Both "coming soon" for now; flip {@code live} when one launches. */
+    private final List<GameBase> bases = List.of(
+            new GameBase("oasis3", "Oasis3", "RuneScape · rev 949",
+                    "In production, working on rev949.",
+                    "Oasis3 — RuneScape, reforged",
+                    "A modern RuneScape (rev 949) base — currently in production.",
+                    "3", "#f0cf67", "#a9781f", false),
+            new GameBase("oasisos", "OasisOS", "Old School · rev 240",
+                    "Migrating content, releasing soon.",
+                    "OasisOS — Old School, reforged",
+                    "An Old School base — migrating the Oasis content across now.",
+                    "OS", "#9adfa6", "#3f7d4e", false));
+
+    /** A selectable game base: its identity, status line, hero copy, and emblem colours. */
+    private static final class GameBase {
+        final String id, name, sub, status, heroTitle, heroSub, emblemText, emblemC1, emblemC2;
+        final boolean live;
+        GameBase(String id, String name, String sub, String status, String heroTitle, String heroSub,
+                 String emblemText, String emblemC1, String emblemC2, boolean live) {
+            this.id = id; this.name = name; this.sub = sub; this.status = status;
+            this.heroTitle = heroTitle; this.heroSub = heroSub;
+            this.emblemText = emblemText; this.emblemC1 = emblemC1; this.emblemC2 = emblemC2;
+            this.live = live;
+        }
+    }
+
+    /** A top game tab bound to a base, so it can be re-styled when the selection changes. */
+    private static final class TabHandle {
+        final GameBase base; final HBox node; final Label text; final Node emblem;
+        TabHandle(GameBase base, HBox node, Label text, Node emblem) {
+            this.base = base; this.node = node; this.text = text; this.emblem = emblem;
+        }
+    }
+
     public LauncherWindow(Stage stage) {
         this.stage = stage;
     }
 
     public void show() {
-        BorderPane root = new BorderPane();
+        selectedBase = bases.get(0);
+        root = new BorderPane();
         root.setStyle("-fx-background-color: " + BG + ";");
         root.setTop(buildTop());
         root.setCenter(buildBody());
@@ -140,7 +181,6 @@ public class LauncherWindow {
         fadeIn.play();
 
         refreshStatus();
-        loadNews();
         startUpdateCheck();
     }
 
@@ -149,10 +189,12 @@ public class LauncherWindow {
     private Region buildTop() {
         HBox games = new HBox(2);
         games.setAlignment(Pos.CENTER_LEFT);
-        games.getChildren().addAll(
-                gameTab(oasisEmblem(), "Oasis", true, this::selectOasis),
-                gameTab(monogramEmblem("RS", "#f0cf67", "#a9781f"), "RuneScape", false, () -> comingSoon("RuneScape 3")),
-                gameTab(monogramEmblem("OS", "#9adfa6", "#3f7d4e"), "Old School", false, () -> comingSoon("Old School base")));
+        tabs.clear();
+        for (GameBase base : bases) {
+            TabHandle handle = buildTab(base);
+            tabs.add(handle);
+            games.getChildren().add(handle.node);
+        }
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -183,42 +225,45 @@ public class LauncherWindow {
         return box;
     }
 
-    private Region gameTab(Node emblem, String label, boolean active, Runnable onClick) {
-        Label text = new Label(label);
+    private TabHandle buildTab(GameBase base) {
+        Node emblem = monogramEmblem(base.emblemText, base.emblemC1, base.emblemC2);
+        Label text = new Label(base.name);
         text.setFont(Font.font("System", FontWeight.BOLD, 14));
-        text.setStyle("-fx-text-fill: " + (active ? GOLD_HI : DIM) + ";");
-
-        HBox tab = new HBox(9);
+        HBox tab = new HBox(9, emblem, text);
         tab.setAlignment(Pos.CENTER_LEFT);
-        if (emblem != null) {
-            tab.getChildren().add(emblem);
-        }
-        tab.getChildren().add(text);
         tab.setMinHeight(66);
         tab.setPrefHeight(66);
-        tab.setPadding(new Insets(0, 17, 0, 17));
-        tab.setStyle(gameTabStyle(active));
-        tab.setOnMouseClicked(e -> onClick.run());
-        if (!active) {
-            if (emblem != null) {
-                emblem.setOpacity(0.82);
-            }
-            tab.setOnMouseEntered(e -> {
-                text.setStyle("-fx-text-fill: " + TEXT + ";");
-                tab.setStyle(gameTabStyleHover());
-                if (emblem != null) {
-                    emblem.setOpacity(1.0);
-                }
-            });
-            tab.setOnMouseExited(e -> {
-                text.setStyle("-fx-text-fill: " + DIM + ";");
-                tab.setStyle(gameTabStyle(false));
-                if (emblem != null) {
-                    emblem.setOpacity(0.82);
-                }
-            });
+        tab.setPadding(new Insets(0, 18, 0, 18));
+        tab.setOnMouseClicked(e -> selectBase(base));
+        TabHandle handle = new TabHandle(base, tab, text, emblem);
+        styleTab(handle, base == selectedBase);
+        tab.setOnMouseEntered(e -> { if (base != selectedBase) styleTabHover(handle); });
+        tab.setOnMouseExited(e -> { if (base != selectedBase) styleTab(handle, false); });
+        return handle;
+    }
+
+    private void styleTab(TabHandle h, boolean active) {
+        h.text.setStyle("-fx-text-fill: " + (active ? GOLD_HI : DIM) + ";");
+        h.emblem.setOpacity(active ? 1.0 : 0.8);
+        h.node.setStyle(gameTabStyle(active));
+    }
+
+    private void styleTabHover(TabHandle h) {
+        h.text.setStyle("-fx-text-fill: " + TEXT + ";");
+        h.emblem.setOpacity(1.0);
+        h.node.setStyle(gameTabStyleHover());
+    }
+
+    private void selectBase(GameBase base) {
+        if (base == selectedBase) {
+            return;
         }
-        return tab;
+        selectedBase = base;
+        for (TabHandle h : tabs) {
+            styleTab(h, h.base == selectedBase);
+        }
+        root.setCenter(buildBody());
+        refreshStatus();
     }
 
     private String gameTabStyle(boolean active) {
@@ -236,23 +281,22 @@ public class LauncherWindow {
                 + " -fx-border-width: 0 0 3 0; -fx-cursor: hand;";
     }
 
-    /** The Oasis tab shows the real gold-O icon; falls back to a monogram badge if the image is missing. */
-    private Node oasisEmblem() {
-        ImageView iv = loadImage("/images/icon.png", 24, 24);
-        return iv != null ? iv : monogramEmblem("O", GOLD_HI, EMBER);
-    }
-
     /** A small circular game emblem drawn in code (guaranteed to render, no bundled image needed). */
     private Region monogramEmblem(String letters, String c1, String c2) {
+        return monogramEmblem(letters, c1, c2, 24);
+    }
+
+    private Region monogramEmblem(String letters, String c1, String c2, double size) {
         Label l = new Label(letters);
         l.setAlignment(Pos.CENTER);
-        l.setMinSize(24, 24);
-        l.setPrefSize(24, 24);
-        l.setMaxSize(24, 24);
-        l.setFont(Font.font("System", FontWeight.BOLD, letters.length() > 1 ? 9.5 : 12));
-        l.setStyle("-fx-text-fill: #1c1206; -fx-background-radius: 12;"
+        l.setMinSize(size, size);
+        l.setPrefSize(size, size);
+        l.setMaxSize(size, size);
+        l.setFont(Font.font("System", FontWeight.BOLD, size * (letters.length() > 1 ? 0.4 : 0.5)));
+        double r = size / 2;
+        l.setStyle("-fx-text-fill: #1c1206; -fx-background-radius: " + r + ";"
                 + " -fx-background-color: radial-gradient(center 34% 28%, radius 72%, " + c1 + ", " + c2 + ");"
-                + " -fx-border-color: rgba(0,0,0,0.4); -fx-border-radius: 12;");
+                + " -fx-border-color: rgba(0,0,0,0.4); -fx-border-radius: " + r + ";");
         return l;
     }
 
@@ -268,7 +312,7 @@ public class LauncherWindow {
     private Region buildBody() {
         VBox content = new VBox(0);
         content.setPadding(new Insets(18, 30, 24, 22));
-        content.getChildren().add(buildHero());
+        content.getChildren().add(buildHero(selectedBase));
         content.getChildren().add(buildUpdatesHeader());
         newsGrid = new FlowPane(13, 13);
         newsGrid.setPrefWrapLength(660);
@@ -283,11 +327,12 @@ public class LauncherWindow {
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         HBox.setHgrow(scroll, Priority.ALWAYS);
 
-        HBox body = new HBox(scroll, buildRightPanel());
+        HBox body = new HBox(scroll, buildRightPanel(selectedBase));
+        loadNews(selectedBase);
         return body;
     }
 
-    private Region buildHero() {
+    private Region buildHero(GameBase base) {
         StackPane hero = new StackPane();
         hero.setMinHeight(198);
         hero.setPrefHeight(198);
@@ -307,17 +352,17 @@ public class LauncherWindow {
         tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(9,6,3,0.95) 0%, rgba(9,6,3,0.64) 46%, rgba(9,6,3,0.24) 100%);");
         hero.getChildren().add(tint);
 
-        Label kick = new Label("NEW BASE · LIVE NOW");
+        Label kick = new Label(base.live ? "LIVE NOW" : "COMING SOON");
         kick.setFont(Font.font("System", FontWeight.BOLD, 10.5));
         kick.setMaxWidth(Region.USE_PREF_SIZE);
         kick.setStyle("-fx-text-fill: #2a1a06; -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD
                 + "); -fx-padding: 3 9 3 9; -fx-background-radius: 5;");
-        Label title = new Label("Oasis 2.0 — reforged on Old School");
+        Label title = new Label(base.heroTitle);
         title.setFont(Font.font("System", FontWeight.BOLD, 27));
         title.setStyle("-fx-text-fill: white;");
         title.setWrapText(true);
         title.setEffect(new DropShadow(8, Color.rgb(0, 0, 0, 0.7)));
-        Label sub = new Label("A modern RuneScape (rev 240) foundation with a custom RuneLite client.");
+        Label sub = new Label(base.heroSub);
         sub.setFont(Font.font("System", 13));
         sub.setStyle("-fx-text-fill: #e9dcc0;");
         sub.setWrapText(true);
@@ -360,7 +405,7 @@ public class LauncherWindow {
         return head;
     }
 
-    private Region buildRightPanel() {
+    private Region buildRightPanel(GameBase base) {
         VBox panel = new VBox(13);
         panel.setPrefWidth(312);
         panel.setMinWidth(312);
@@ -368,85 +413,21 @@ public class LauncherWindow {
         panel.setStyle("-fx-background-color: linear-gradient(to bottom, #271d10, #19110a);"
                 + " -fx-border-color: " + LINE2 + "; -fx-border-width: 0 0 0 1;");
 
-        ImageView baseIcon = loadImage("/images/icon.png", 36, 36);
-        Label baseName = new Label("Oasis");
+        // Base header: emblem + name + sub.
+        Label baseName = new Label(base.name);
         baseName.setFont(Font.font("System", FontWeight.BOLD, 19));
         baseName.setStyle("-fx-text-fill: " + GOLD_HI + ";");
-        Label baseSub = new Label("Old School · rev 240");
+        Label baseSub = new Label(base.sub);
         baseSub.setFont(Font.font("System", 11));
         baseSub.setStyle("-fx-text-fill: " + DIM2 + ";");
         VBox baseText = new VBox(2, baseName, baseSub);
-        HBox base = new HBox(11);
-        base.setAlignment(Pos.CENTER_LEFT);
-        if (baseIcon != null) {
-            base.getChildren().add(baseIcon);
-        }
-        base.getChildren().add(baseText);
-        base.setPadding(new Insets(0, 0, 13, 0));
-        base.setStyle("-fx-border-color: " + LINE + "; -fx-border-width: 0 0 1 0;");
+        HBox header = new HBox(11, monogramEmblem(base.emblemText, base.emblemC1, base.emblemC2, 36), baseText);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(0, 0, 13, 0));
+        header.setStyle("-fx-border-color: " + LINE + "; -fx-border-width: 0 0 1 0;");
 
-        playButton = new Button("PLAY");
-        playButton.setDisable(true);
-        playButton.setMaxWidth(Double.MAX_VALUE);
-        playButton.setPrefHeight(54);
-        playButton.setFont(Font.font("System", FontWeight.BOLD, 21));
-        String playBase = "-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
-                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
-        String playHover = "-fx-background-color: linear-gradient(to bottom, #ffe7b0, " + GOLD_HI + " 52%, " + GOLD
-                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
-        playButton.setStyle(playBase);
-        playButton.setOnAction(e -> onPlay());
-        ScaleTransition playScale = new ScaleTransition(Duration.millis(120), playButton);
-        playButton.setOnMouseEntered(e -> {
-            if (playButton.isDisabled()) {
-                return;
-            }
-            playButton.setStyle(playHover);
-            playButton.setEffect(new DropShadow(20, Color.rgb(244, 181, 63, 0.55)));
-            playScale.stop();
-            playScale.setToX(1.03);
-            playScale.setToY(1.03);
-            playScale.play();
-        });
-        playButton.setOnMouseExited(e -> {
-            playButton.setStyle(playBase);
-            playButton.setEffect(null);
-            playScale.stop();
-            playScale.setToX(1.0);
-            playScale.setToY(1.0);
-            playScale.play();
-        });
-
-        ComboBox<String> client = new ComboBox<>(FXCollections.observableArrayList("RuneLite"));
-        client.getSelectionModel().selectFirst();
-        client.setMaxWidth(Double.MAX_VALUE);
-        client.setStyle(dropdownStyle());
-
-        accountDropdown = new ComboBox<>();
-        accountDropdown.setMaxWidth(Double.MAX_VALUE);
-        accountDropdown.setPromptText("Select account");
-        accountDropdown.setStyle(dropdownStyle());
-        accountDropdown.setButtonCell(new javafx.scene.control.ListCell<>() {
-            @Override protected void updateItem(Account item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? "Select account" : item.label());
-                setStyle("-fx-text-fill: " + TEXT + ";");
-            }
-        });
-
-        serverStatusLabel = new Label("Checking server…");
-        serverStatusLabel.setFont(Font.font("System", 12.5));
-        serverStatusLabel.setMaxWidth(Double.MAX_VALUE);
-        serverStatusLabel.setStyle(statusPillStyle(DIM));
-
-        Button addBtn = new Button("+");
-        addBtn.setStyle(smallBtnStyle(GOLD));
-        addBtn.setOnAction(e -> onAddAccount());
-        Button removeBtn = new Button("−");
-        removeBtn.setStyle(smallBtnStyle("#6b5a3e"));
-        removeBtn.setOnAction(e -> onRemoveAccount());
-        HBox acctRow = new HBox(6, accountDropdown, addBtn, removeBtn);
-        HBox.setHgrow(accountDropdown, Priority.ALWAYS);
+        Region grow = new Region();
+        VBox.setVgrow(grow, Priority.ALWAYS);
 
         Button discord = new Button("Log in with Discord");
         discord.setFont(Font.font("System", FontWeight.BOLD, 12.5));
@@ -455,14 +436,101 @@ public class LauncherWindow {
                 + " -fx-cursor: hand; -fx-padding: 11;");
         discord.setOnAction(e -> onDiscordLogin());
 
-        Region grow = new Region();
-        VBox.setVgrow(grow, Priority.ALWAYS);
+        if (base.live) {
+            playButton = new Button("PLAY");
+            playButton.setDisable(true);
+            playButton.setMaxWidth(Double.MAX_VALUE);
+            playButton.setPrefHeight(54);
+            playButton.setFont(Font.font("System", FontWeight.BOLD, 21));
+            String playBase = "-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
+                    + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
+            String playHover = "-fx-background-color: linear-gradient(to bottom, #ffe7b0, " + GOLD_HI + " 52%, " + GOLD
+                    + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
+            playButton.setStyle(playBase);
+            playButton.setOnAction(e -> onPlay());
+            ScaleTransition playScale = new ScaleTransition(Duration.millis(120), playButton);
+            playButton.setOnMouseEntered(e -> {
+                if (playButton.isDisabled()) {
+                    return;
+                }
+                playButton.setStyle(playHover);
+                playButton.setEffect(new DropShadow(20, Color.rgb(244, 181, 63, 0.55)));
+                playScale.stop();
+                playScale.setToX(1.03);
+                playScale.setToY(1.03);
+                playScale.play();
+            });
+            playButton.setOnMouseExited(e -> {
+                playButton.setStyle(playBase);
+                playButton.setEffect(null);
+                playScale.stop();
+                playScale.setToX(1.0);
+                playScale.setToY(1.0);
+                playScale.play();
+            });
 
-        panel.getChildren().addAll(base, playButton,
-                label("GAME CLIENT"), client,
-                label("CHARACTER"), acctRow,
-                serverStatusLabel, grow, discord);
-        refreshAccountDropdown();
+            ComboBox<String> client = new ComboBox<>(FXCollections.observableArrayList("RuneLite"));
+            client.getSelectionModel().selectFirst();
+            client.setMaxWidth(Double.MAX_VALUE);
+            client.setStyle(dropdownStyle());
+
+            accountDropdown = new ComboBox<>();
+            accountDropdown.setMaxWidth(Double.MAX_VALUE);
+            accountDropdown.setPromptText("Select account");
+            accountDropdown.setStyle(dropdownStyle());
+            accountDropdown.setButtonCell(new javafx.scene.control.ListCell<>() {
+                @Override protected void updateItem(Account item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "Select account" : item.label());
+                    setStyle("-fx-text-fill: " + TEXT + ";");
+                }
+            });
+
+            serverStatusLabel = new Label("Checking server…");
+            serverStatusLabel.setFont(Font.font("System", 12.5));
+            serverStatusLabel.setMaxWidth(Double.MAX_VALUE);
+            serverStatusLabel.setStyle(statusPillStyle(DIM));
+
+            Button addBtn = new Button("+");
+            addBtn.setStyle(smallBtnStyle(GOLD));
+            addBtn.setOnAction(e -> onAddAccount());
+            Button removeBtn = new Button("−");
+            removeBtn.setStyle(smallBtnStyle("#6b5a3e"));
+            removeBtn.setOnAction(e -> onRemoveAccount());
+            HBox acctRow = new HBox(6, accountDropdown, addBtn, removeBtn);
+            HBox.setHgrow(accountDropdown, Priority.ALWAYS);
+
+            baseStatusLabel = null;
+            panel.getChildren().addAll(header, playButton,
+                    label("GAME CLIENT"), client,
+                    label("CHARACTER"), acctRow,
+                    serverStatusLabel, grow, discord);
+            refreshAccountDropdown();
+        } else {
+            // Coming-soon base: a "COMING SOON" plate + the current-status callout, no Play/account.
+            playButton = null;
+            serverStatusLabel = null;
+            accountDropdown = null;
+
+            Label soon = new Label("COMING SOON");
+            soon.setAlignment(Pos.CENTER);
+            soon.setMaxWidth(Double.MAX_VALUE);
+            soon.setPrefHeight(54);
+            soon.setFont(Font.font("System", FontWeight.BOLD, 17));
+            soon.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 2;"
+                    + " -fx-background-color: linear-gradient(to bottom, rgba(244,181,63,0.10), rgba(244,181,63,0.03));"
+                    + " -fx-background-radius: 11; -fx-border-color: " + LINE2 + "; -fx-border-radius: 11;");
+
+            baseStatusLabel = new Label(base.status);
+            baseStatusLabel.setFont(Font.font("System", 13));
+            baseStatusLabel.setWrapText(true);
+            baseStatusLabel.setMaxWidth(Double.MAX_VALUE);
+            baseStatusLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-background-color: rgba(0,0,0,0.28);"
+                    + " -fx-background-radius: 10; -fx-border-color: " + LINE + "; -fx-border-radius: 10; -fx-padding: 12 13 12 13;");
+            VBox statusBox = new VBox(7, label("CURRENT STATUS"), baseStatusLabel);
+
+            panel.getChildren().addAll(header, soon, statusBox, grow, discord);
+        }
         return panel;
     }
 
@@ -520,16 +588,28 @@ public class LauncherWindow {
 
     // ── News (Discord-post cards) ───────────────────────────────────────────
 
-    private void loadNews() {
+    private void loadNews(GameBase base) {
+        final String baseId = base.id;
         background.submit(() -> {
             try {
-                NewsFeed feed = fetcher.fetchNews();
-                Platform.runLater(() -> renderNews(feed));
-            } catch (Exception ex) {
-                logger.warn("Could not fetch news: {}", ex.getMessage());
+                NewsFeed feed = fetcher.fetchNews(baseId);
                 Platform.runLater(() -> {
+                    if (base != selectedBase) {
+                        return; // user switched tabs while this was loading
+                    }
+                    renderNews(feed);
+                    if (feed != null && feed.status != null && !feed.status.isBlank() && baseStatusLabel != null) {
+                        baseStatusLabel.setText(feed.status);
+                    }
+                });
+            } catch (Exception ex) {
+                logger.warn("Could not fetch news for {}: {}", baseId, ex.getMessage());
+                Platform.runLater(() -> {
+                    if (base != selectedBase) {
+                        return;
+                    }
                     newsGrid.getChildren().clear();
-                    Label err = new Label("Could not load updates.");
+                    Label err = new Label("No updates yet for " + base.name + ".");
                     err.setStyle("-fx-text-fill: " + DIM + ";");
                     newsGrid.getChildren().add(err);
                 });
@@ -697,20 +777,6 @@ public class LauncherWindow {
         }
     }
 
-    // ── Game tabs ───────────────────────────────────────────────────────────
-
-    private void selectOasis() {
-        // Oasis is the active base; nothing to switch yet.
-    }
-
-    private void comingSoon(String what) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Coming soon");
-        a.setHeaderText(what + " is coming soon.");
-        a.setContentText("Oasis is the live base for now. More game bases will slot in here.");
-        a.showAndWait();
-    }
-
     private void onDiscordLogin() {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
         a.setTitle("Discord sign-in");
@@ -722,10 +788,17 @@ public class LauncherWindow {
     // ── Server status ───────────────────────────────────────────────────────
 
     private void refreshStatus() {
+        // Only live bases show a server-status pill; coming-soon bases have no such label.
+        if (serverStatusLabel == null) {
+            return;
+        }
         background.submit(() -> {
             try {
                 ServerStatus status = fetcher.fetchStatus();
                 Platform.runLater(() -> {
+                    if (serverStatusLabel == null) {
+                        return;
+                    }
                     if (status == null) {
                         serverStatusLabel.setText("Server status unavailable");
                         serverStatusLabel.setStyle(statusPillStyle(DIM));
@@ -739,8 +812,10 @@ public class LauncherWindow {
                 });
             } catch (Exception ex) {
                 Platform.runLater(() -> {
-                    serverStatusLabel.setText("Server status unavailable");
-                    serverStatusLabel.setStyle(statusPillStyle(DIM));
+                    if (serverStatusLabel != null) {
+                        serverStatusLabel.setText("Server status unavailable");
+                        serverStatusLabel.setStyle(statusPillStyle(DIM));
+                    }
                 });
             }
         });
@@ -755,7 +830,7 @@ public class LauncherWindow {
                 statusLabel.setText("DEV MODE — updates skipped");
                 statusLabel.setStyle("-fx-text-fill: " + GOLD_HI + ";");
                 progressBar.setProgress(1.0);
-                playButton.setDisable(false);
+                if (playButton != null) playButton.setDisable(false);
             });
             return;
         }
@@ -771,14 +846,14 @@ public class LauncherWindow {
                     statusLabel.setText("Ready");
                     fileLabel.setText("");
                     progressBar.setProgress(1.0);
-                    playButton.setDisable(false);
+                    if (playButton != null) playButton.setDisable(false);
                 });
             } catch (Exception ex) {
                 logger.warn("Update check failed (tolerated): {}", ex.getMessage());
                 Platform.runLater(() -> {
                     statusLabel.setText("Ready");
                     progressBar.setProgress(1.0);
-                    playButton.setDisable(false);
+                    if (playButton != null) playButton.setDisable(false);
                 });
             }
         });
@@ -817,7 +892,7 @@ public class LauncherWindow {
                 logger.error("Failed to launch client", ex);
                 Platform.runLater(() -> {
                     statusLabel.setText("Client not available yet — coming with the next update.");
-                    playButton.setDisable(false);
+                    if (playButton != null) playButton.setDisable(false);
                 });
             }
         });
@@ -826,6 +901,9 @@ public class LauncherWindow {
     // ── Account management ──────────────────────────────────────────────────
 
     private void refreshAccountDropdown() {
+        if (accountDropdown == null) {
+            return;
+        }
         List<Account> accounts = accountStore.list();
         accountDropdown.setItems(FXCollections.observableArrayList(accounts));
         if (!accountDropdown.getItems().isEmpty()) {

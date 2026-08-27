@@ -55,6 +55,15 @@ public class ManifestFetcher {
         return gson.fromJson(fetch(NEWS_URL), NewsFeed.class);
     }
 
+    /**
+     * Per-game-base "Recent Updates" feed, from {@code updates-<baseId>.json} (e.g. {@code updates-oasis3.json}).
+     * Each base gets its own file so a Discord sync bot can point one channel at each. The feed may also carry a
+     * {@code "status"} string — the base's current-status line shown in the launcher.
+     */
+    public NewsFeed fetchNews(String baseId) throws IOException, InterruptedException {
+        return gson.fromJson(fetch(RAW_BASE + "updates-" + baseId + ".json"), NewsFeed.class);
+    }
+
     public ServerStatus fetchStatus() throws IOException, InterruptedException {
         return gson.fromJson(fetch(STATUS_URL), ServerStatus.class);
     }
