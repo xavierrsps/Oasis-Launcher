@@ -1,9 +1,9 @@
 package com.oasis.launcher.update;
 
 import com.google.gson.Gson;
-import com.oasis.launcher.model.Manifest;
 import com.oasis.launcher.model.NewsFeed;
 import com.oasis.launcher.model.ServerStatus;
+import com.oasis.launcher.model.VersionInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,23 +15,27 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 /**
- * Fetches launcher metadata (manifest, news, server status) over HTTPS.
+ * Fetches launcher metadata over HTTPS from the owner-controlled launcher-files repo.
  *
- * <p>All fetches use a short timeout so a hung server doesn't lock up the UI.
+ * <p>Schema (three small JSON files at the repo root, all human-editable):
+ * <ul>
+ *   <li>{@code version.json} — launcher self-update ({@link VersionInfo})</li>
+ *   <li>{@code updates.json} — the "Recent Updates" feed ({@link NewsFeed})</li>
+ *   <li>{@code status.json}  — live server status ({@link ServerStatus}); optional</li>
+ * </ul>
  */
 public class ManifestFetcher {
 
     private static final Logger logger = LogManager.getLogger(ManifestFetcher.class);
 
-    /** Owner-controlled repo hosting manifest.json / news.json / status.json + the Release binaries.
-     *  Format: "GitHubUser/repo-name". This is the launcher's trust root — it decides which client to
-     *  download and where it points, so keep it in a repo only the owner controls. */
+    /** Owner-controlled repo hosting version.json / updates.json / status.json + the Release binaries.
+     *  This is the launcher's trust root — it decides which build to self-update to. */
     private static final String LAUNCHER_FILES_REPO = "xavierrsps/Oasis-Launcher";
     private static final String RAW_BASE = "https://raw.githubusercontent.com/" + LAUNCHER_FILES_REPO + "/main/";
 
-    public static final String MANIFEST_URL = RAW_BASE + "manifest.json";
-    public static final String NEWS_URL     = RAW_BASE + "news.json";
-    public static final String STATUS_URL   = RAW_BASE + "status.json";
+    public static final String VERSION_URL = RAW_BASE + "version.json";
+    public static final String NEWS_URL    = RAW_BASE + "updates.json";
+    public static final String STATUS_URL  = RAW_BASE + "status.json";
 
     private final HttpClient http;
     private final Gson gson = new Gson();
@@ -43,19 +47,16 @@ public class ManifestFetcher {
                 .build();
     }
 
-    public Manifest fetchManifest() throws IOException, InterruptedException {
-        String json = fetch(MANIFEST_URL);
-        return gson.fromJson(json, Manifest.class);
+    public VersionInfo fetchVersionInfo() throws IOException, InterruptedException {
+        return gson.fromJson(fetch(VERSION_URL), VersionInfo.class);
     }
 
     public NewsFeed fetchNews() throws IOException, InterruptedException {
-        String json = fetch(NEWS_URL);
-        return gson.fromJson(json, NewsFeed.class);
+        return gson.fromJson(fetch(NEWS_URL), NewsFeed.class);
     }
 
     public ServerStatus fetchStatus() throws IOException, InterruptedException {
-        String json = fetch(STATUS_URL);
-        return gson.fromJson(json, ServerStatus.class);
+        return gson.fromJson(fetch(STATUS_URL), ServerStatus.class);
     }
 
     private String fetch(String url) throws IOException, InterruptedException {
@@ -63,7 +64,7 @@ public class ManifestFetcher {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(15))
-                .header("User-Agent", "Oasis-Launcher/1.0")
+                .header("User-Agent", "Oasis-Launcher/2.0")
                 .GET()
                 .build();
         HttpResponse<String> response = http.send(req, HttpResponse.BodyHandlers.ofString());

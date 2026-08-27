@@ -5,22 +5,20 @@ import com.oasis.launcher.account.AccountStore;
 import com.oasis.launcher.account.CredentialStore;
 import com.oasis.launcher.launch.ClientLauncher;
 import com.oasis.launcher.model.Account;
-import com.oasis.launcher.model.Manifest;
 import com.oasis.launcher.model.NewsFeed;
 import com.oasis.launcher.model.ServerStatus;
-import com.oasis.launcher.update.Downloader;
+import com.oasis.launcher.model.VersionInfo;
 import com.oasis.launcher.update.LauncherSelfUpdater;
 import com.oasis.launcher.update.ManifestFetcher;
-import com.oasis.launcher.update.UpdateManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -28,17 +26,17 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
-import javafx.scene.control.CheckBox;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -53,47 +51,48 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Main launcher window.
- *
- * <p>Layout (top to bottom):
- * <ul>
- *   <li>Header: logo placeholder + server status</li>
- *   <li>News feed: scrollable list of articles</li>
- *   <li>Footer: progress bar + status text + Play button</li>
- * </ul>
+ * Main launcher window — Jagex-launcher-style layout in an OSRS brown/gold theme: top game-base tabs,
+ * a hero banner, a Discord-fed "Recent Updates" grid, and a right-hand Play panel (client, character,
+ * server status). Resizable. The launcher self-updates from {@code version.json} on startup.
  */
 public class LauncherWindow {
 
     private static final Logger logger = LogManager.getLogger(LauncherWindow.class);
 
-    /** Accent color used throughout the launcher (royal blue, matches in-game admin broadcasts). */
-    public static final String ACCENT = "#4169e1";
-    public static final String BG_DARK = "#1a1a1a";
-    public static final String BG_PANEL = "#252525";
-    public static final String TEXT_LIGHT = "#e0e0e0";
-    public static final String TEXT_DIM = "#888888";
+    // OSRS brown/gold palette
+    private static final String BG = "#181109";
+    private static final String PANEL = "#2b2113";
+    private static final String PANEL2 = "#352815";
+    private static final String GOLD = "#f4b53f";
+    private static final String GOLD_HI = "#ffd884";
+    private static final String GOLD_DIM = "#bd8b2c";
+    private static final String EMBER = "#c9701f";
+    private static final String TEAL = "#5bcf92";
+    private static final String DISCORD = "#5865f2";
+    private static final String TEXT = "#f1e5cb";
+    private static final String DIM = "#bcaa86";
+    private static final String DIM2 = "#8f7f60";
+    private static final String LINE = "rgba(244,181,63,0.18)";
+    private static final String LINE2 = "rgba(244,181,63,0.34)";
 
     private final Stage stage;
     private final ManifestFetcher fetcher = new ManifestFetcher();
-    private final UpdateManager updater = new UpdateManager();
     private final LauncherSelfUpdater selfUpdater = new LauncherSelfUpdater();
     private final ClientLauncher gameLauncher = new ClientLauncher();
     private final AccountStore accountStore = new AccountStore();
     private final CredentialStore credentialStore = new CredentialStore();
-    private final ScheduledExecutorService background = Executors.newScheduledThreadPool(2,
-            r -> {
-                Thread t = new Thread(r, "launcher-bg");
-                t.setDaemon(true);
-                return t;
-            });
+    private final ScheduledExecutorService background = Executors.newScheduledThreadPool(2, r -> {
+        Thread t = new Thread(r, "launcher-bg");
+        t.setDaemon(true);
+        return t;
+    });
 
-    // UI components (kept as fields so background tasks can update them)
     private Label statusLabel;
     private Label fileLabel;
     private ProgressBar progressBar;
     private Button playButton;
     private Label serverStatusLabel;
-    private VBox newsBox;
+    private FlowPane newsGrid;
     private ComboBox<Account> accountDropdown;
 
     public LauncherWindow(Stage stage) {
@@ -101,32 +100,21 @@ public class LauncherWindow {
     }
 
     public void show() {
-        BorderPane content = new BorderPane();
-        // Transparent so the background image shows through.
-        content.setStyle("-fx-background-color: transparent;");
-        content.setTop(buildHeader());
-        content.setCenter(buildNewsArea());
-        content.setBottom(buildFooter());
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + BG + ";");
+        root.setTop(buildTop());
+        root.setCenter(buildBody());
+        root.setBottom(buildBottomBar());
 
-        // Root is a StackPane: background image on the bottom layer,
-        // content (with semi-transparent panels) on top.
-        StackPane root = new StackPane();
-        root.setStyle("-fx-background-color: " + BG_DARK + ";");
-
-        ImageView bgImage = tryLoadBackground();
-        if (bgImage != null) {
-            root.getChildren().add(bgImage);
-        }
-        root.getChildren().add(content);
-
-        Scene scene = new Scene(root, 720, 520);
+        Scene scene = new Scene(root, 1010, 640);
         stage.setScene(scene);
         stage.setTitle("Oasis Launcher");
-        stage.setResizable(false);
+        stage.setResizable(true);
+        stage.setMinWidth(880);
+        stage.setMinHeight(560);
 
-        // Try to set the window/taskbar icon from the same logo.
         try {
-            InputStream iconStream = getClass().getResourceAsStream("/images/logo.png");
+            InputStream iconStream = getClass().getResourceAsStream("/images/icon.png");
             if (iconStream != null) {
                 stage.getIcons().add(new Image(iconStream));
             }
@@ -137,212 +125,296 @@ public class LauncherWindow {
         stage.setOnCloseRequest(e -> background.shutdownNow());
         stage.show();
 
-        // Kick off initial checks.
         refreshStatus();
         loadNews();
         startUpdateCheck();
     }
 
-    /**
-     * Loads /images/logo.png as a full-window background image, scaled to
-     * fit the window. Returns null if no logo file is present.
-     */
-    private ImageView tryLoadBackground() {
-        InputStream stream = getClass().getResourceAsStream("/images/logo.png");
-        if (stream == null) {
-            return null;
-        }
-        Image img = new Image(stream);
-        if (img.isError()) {
-            return null;
-        }
-        ImageView view = new ImageView(img);
-        view.setPreserveRatio(true);
-        view.setFitWidth(720);
-        view.setFitHeight(520);
-        view.setSmooth(true);
-        // Dim it a bit so the foreground text/buttons stay readable.
-        view.setOpacity(0.35);
-        return view;
-    }
+    // ── Top bar: game tabs + account + logo ─────────────────────────────────
 
-    // ── Header ────────────────────────────────────────────────────────────
-
-    private Region buildHeader() {
-        // No logo here anymore — it lives in the background.
-        Label tagline = new Label("Oasis ~ #1 Upcoming Semi-Custom RSPS");
-        tagline.setFont(Font.font("System", FontWeight.BOLD, 14));
-        tagline.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-
-        VBox titleBox = new VBox(tagline);
-        titleBox.setAlignment(Pos.CENTER_LEFT);
-
-        serverStatusLabel = new Label("Checking server…");
-        serverStatusLabel.setFont(Font.font("System", 12));
-        serverStatusLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
+    private Region buildTop() {
+        HBox games = new HBox(2);
+        games.setAlignment(Pos.CENTER_LEFT);
+        games.getChildren().addAll(
+                gameTab("Oasis", true, this::selectOasis),
+                gameTab("RuneScape", false, () -> comingSoon("RuneScape 3")),
+                gameTab("Old School", false, () -> comingSoon("Old School base")));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox header = new HBox(titleBox, spacer, serverStatusLabel);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(18, 22, 14, 22));
-        // Semi-transparent panel so the background logo shows through faintly.
-        header.setStyle("-fx-background-color: rgba(26, 26, 26, 0.85);"
-                + " -fx-border-color: " + ACCENT + ";"
-                + " -fx-border-width: 0 0 2 0;");
-        return header;
+        Label settings = chip("⚙  Settings");
+        Label account = chip("Xavier  ▾");
+
+        ImageView logo = loadImage("/images/logo.png", -1, 40);
+        HBox top = new HBox(6);
+        top.setAlignment(Pos.CENTER_LEFT);
+        top.getChildren().addAll(games, spacer, settings, account);
+        if (logo != null) {
+            HBox.setMargin(logo, new Insets(0, 4, 0, 12));
+            top.getChildren().add(logo);
+        }
+        top.setPadding(new Insets(0, 20, 0, 18));
+        top.setMinHeight(68);
+        top.setPrefHeight(68);
+        top.setStyle("-fx-background-color: linear-gradient(to bottom, #2d2213, #1c1409);"
+                + " -fx-border-color: " + LINE2 + "; -fx-border-width: 0 0 1 0;");
+
+        // thin gold divider strip below the bar
+        Region divider = new Region();
+        divider.setMinHeight(2);
+        divider.setStyle("-fx-background-color: linear-gradient(to right, transparent, " + GOLD_DIM + ", transparent);");
+
+        VBox box = new VBox(top, divider);
+        return box;
     }
 
-    // ── News feed ─────────────────────────────────────────────────────────
+    private Button gameTab(String label, boolean active, Runnable onClick) {
+        Button b = new Button(label);
+        b.setFont(Font.font("System", FontWeight.BOLD, 14));
+        b.setMinHeight(66);
+        b.setPrefHeight(66);
+        b.setPadding(new Insets(0, 17, 0, 17));
+        b.setStyle(gameTabStyle(active));
+        b.setOnAction(e -> onClick.run());
+        return b;
+    }
 
-    private Region buildNewsArea() {
-        newsBox = new VBox(10);
-        newsBox.setPadding(new Insets(16, 22, 16, 22));
+    private String gameTabStyle(boolean active) {
+        if (active) {
+            return "-fx-background-color: linear-gradient(to bottom, rgba(244,181,63,0.04), rgba(244,181,63,0.12));"
+                    + " -fx-text-fill: " + GOLD_HI + "; -fx-border-color: transparent transparent " + GOLD + " transparent;"
+                    + " -fx-border-width: 0 0 3 0; -fx-cursor: hand;";
+        }
+        return "-fx-background-color: transparent; -fx-text-fill: " + DIM + ";"
+                + " -fx-border-color: transparent; -fx-cursor: hand;";
+    }
 
-        Label header = new Label("Latest News");
-        header.setFont(Font.font("System", FontWeight.BOLD, 14));
-        header.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-        newsBox.getChildren().add(header);
+    private Label chip(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font("System", 13));
+        l.setStyle("-fx-text-fill: " + DIM + "; -fx-padding: 8 12 8 12; -fx-background-radius: 9; -fx-cursor: hand;");
+        return l;
+    }
 
-        Label loading = new Label("Loading news…");
-        loading.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
-        newsBox.getChildren().add(loading);
+    // ── Body: content (hero + news) + right play panel ──────────────────────
 
-        ScrollPane scroll = new ScrollPane(newsBox);
+    private Region buildBody() {
+        VBox content = new VBox(0);
+        content.setPadding(new Insets(18, 20, 22, 20));
+        content.getChildren().add(buildHero());
+        content.getChildren().add(buildUpdatesHeader());
+        newsGrid = new FlowPane(13, 13);
+        newsGrid.setPrefWrapLength(660);
+        Label loading = new Label("Loading updates…");
+        loading.setStyle("-fx-text-fill: " + DIM + ";");
+        newsGrid.getChildren().add(loading);
+        content.getChildren().add(newsGrid);
+
+        ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: transparent;"
-                + " -fx-background-color: transparent;");
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        return scroll;
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        HBox.setHgrow(scroll, Priority.ALWAYS);
+
+        HBox body = new HBox(scroll, buildRightPanel());
+        return body;
     }
 
-    // ── Footer with progress bar and Play button ─────────────────────────
+    private Region buildHero() {
+        StackPane hero = new StackPane();
+        hero.setMinHeight(190);
+        hero.setPrefHeight(190);
+        hero.setStyle("-fx-background-radius: 13; -fx-border-color: " + LINE2 + "; -fx-border-radius: 13;");
+        ImageView bg = loadImage("/images/background.png", 700, -1);
+        if (bg != null) {
+            bg.setPreserveRatio(true);
+            StackPane clip = new StackPane(bg);
+            clip.setStyle("-fx-background-radius: 13;");
+            clip.setMinHeight(190);
+            clip.setMaxHeight(190);
+            hero.getChildren().add(clip);
+        }
+        Region tint = new Region();
+        tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(10,7,4,0.9) 0%, rgba(10,7,4,0.3) 55%, transparent);"
+                + " -fx-background-radius: 13;");
+        hero.getChildren().add(tint);
 
-    private Region buildFooter() {
-        statusLabel = new Label("Idle");
-        statusLabel.setFont(Font.font("System", 12));
-        statusLabel.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
+        Label kick = new Label("NEW BASE · LIVE NOW");
+        kick.setFont(Font.font("System", FontWeight.BOLD, 10.5));
+        kick.setStyle("-fx-text-fill: #2a1a06; -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD
+                + "); -fx-padding: 3 9 3 9; -fx-background-radius: 5;");
+        Label title = new Label("Oasis 2.0 — reforged on Old School");
+        title.setFont(Font.font("System", FontWeight.BOLD, 26));
+        title.setStyle("-fx-text-fill: white;");
+        title.setWrapText(true);
+        Label sub = new Label("A modern RuneScape (rev 240) foundation with a custom RuneLite client.");
+        sub.setFont(Font.font("System", 13));
+        sub.setStyle("-fx-text-fill: #e9dcc0;");
+        VBox txt = new VBox(8, kick, title, sub);
+        txt.setAlignment(Pos.BOTTOM_LEFT);
+        txt.setMaxWidth(440);
+        txt.setPadding(new Insets(22, 24, 22, 24));
+        StackPane.setAlignment(txt, Pos.BOTTOM_LEFT);
+        hero.getChildren().add(txt);
+        return hero;
+    }
 
-        fileLabel = new Label("");
-        fileLabel.setFont(Font.font("System", 10));
-        fileLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
+    private Region buildUpdatesHeader() {
+        Label section = new Label("RECENT UPDATES");
+        section.setFont(Font.font("System", FontWeight.BOLD, 14));
+        section.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 3;");
+        Label src = new Label("# synced from Discord");
+        src.setFont(Font.font("System", 10.5));
+        src.setStyle("-fx-text-fill: #9aa4f5; -fx-background-color: rgba(88,101,242,0.14);"
+                + " -fx-border-color: rgba(88,101,242,0.4); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 3 8 3 8;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label viewAll = new Label("View all →");
+        viewAll.setFont(Font.font("System", FontWeight.BOLD, 12));
+        viewAll.setStyle("-fx-text-fill: " + GOLD_DIM + "; -fx-cursor: hand;");
+        HBox head = new HBox(11, section, src, spacer, viewAll);
+        head.setAlignment(Pos.CENTER_LEFT);
+        head.setPadding(new Insets(24, 2, 13, 2));
+        return head;
+    }
 
-        progressBar = new ProgressBar(0);
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setPrefHeight(8);
-        progressBar.setStyle("-fx-accent: " + ACCENT + ";");
+    private Region buildRightPanel() {
+        VBox panel = new VBox(13);
+        panel.setPrefWidth(312);
+        panel.setMinWidth(312);
+        panel.setPadding(new Insets(18, 18, 16, 18));
+        panel.setStyle("-fx-background-color: linear-gradient(to bottom, #271d10, #19110a);"
+                + " -fx-border-color: " + LINE2 + "; -fx-border-width: 0 0 0 1;");
 
-        VBox progressBox = new VBox(4, statusLabel, fileLabel, progressBar);
-        progressBox.setMaxWidth(Double.MAX_VALUE);
-        progressBox.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(progressBox, Priority.ALWAYS);
+        ImageView baseIcon = loadImage("/images/icon.png", 36, 36);
+        Label baseName = new Label("Oasis");
+        baseName.setFont(Font.font("System", FontWeight.BOLD, 19));
+        baseName.setStyle("-fx-text-fill: " + GOLD_HI + ";");
+        Label baseSub = new Label("Old School · rev 240");
+        baseSub.setFont(Font.font("System", 11));
+        baseSub.setStyle("-fx-text-fill: " + DIM2 + ";");
+        VBox baseText = new VBox(2, baseName, baseSub);
+        HBox base = new HBox(11);
+        base.setAlignment(Pos.CENTER_LEFT);
+        if (baseIcon != null) {
+            base.getChildren().add(baseIcon);
+        }
+        base.getChildren().add(baseText);
+        base.setPadding(new Insets(0, 0, 13, 0));
+        base.setStyle("-fx-border-color: " + LINE + "; -fx-border-width: 0 0 1 0;");
 
         playButton = new Button("PLAY");
         playButton.setDisable(true);
-        playButton.setMinSize(140, 56);
-        playButton.setPrefSize(140, 56);
-        playButton.setMaxSize(140, 56);
-        playButton.setFont(Font.font("System", FontWeight.BOLD, 18));
-        playButton.setStyle("-fx-background-color: " + ACCENT + ";"
-                + " -fx-text-fill: white;"
-                + " -fx-background-radius: 4;"
-                + " -fx-cursor: hand;");
+        playButton.setMaxWidth(Double.MAX_VALUE);
+        playButton.setPrefHeight(54);
+        playButton.setFont(Font.font("System", FontWeight.BOLD, 21));
+        playButton.setStyle("-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
+                + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;");
         playButton.setOnAction(e -> onPlay());
 
-        // ── Account selection bar (above the progress section) ──
-        Label accountLabel = new Label("Account:");
-        accountLabel.setFont(Font.font("System", 11));
-        accountLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
+        ComboBox<String> client = new ComboBox<>(FXCollections.observableArrayList("RuneLite"));
+        client.getSelectionModel().selectFirst();
+        client.setMaxWidth(Double.MAX_VALUE);
+        client.setStyle(dropdownStyle());
 
         accountDropdown = new ComboBox<>();
-        accountDropdown.setPrefWidth(220);
-        accountDropdown.setPromptText("No accounts saved");
-        accountDropdown.setStyle("-fx-background-color: rgba(26, 26, 26, 0.9);"
-                + " -fx-text-fill: " + TEXT_LIGHT + ";"
-                + " -fx-border-color: rgba(65, 105, 225, 0.5);"
-                + " -fx-border-radius: 4;");
-        accountDropdown.setCellFactory(lv -> new javafx.scene.control.ListCell<Account>() {
+        accountDropdown.setMaxWidth(Double.MAX_VALUE);
+        accountDropdown.setPromptText("Select account");
+        accountDropdown.setStyle(dropdownStyle());
+        accountDropdown.setButtonCell(new javafx.scene.control.ListCell<>() {
             @Override protected void updateItem(Account item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "" : item.label());
-                setStyle("-fx-text-fill: " + TEXT_LIGHT + "; -fx-background-color: " + BG_PANEL + ";");
+                setText(empty || item == null ? "Select account" : item.label());
+                setStyle("-fx-text-fill: " + TEXT + ";");
             }
         });
-        accountDropdown.setButtonCell(new javafx.scene.control.ListCell<Account>() {
-            @Override protected void updateItem(Account item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? "No account selected" : item.label());
-                setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-            }
-        });
+
+        serverStatusLabel = new Label("Checking server…");
+        serverStatusLabel.setFont(Font.font("System", 12.5));
+        serverStatusLabel.setMaxWidth(Double.MAX_VALUE);
+        serverStatusLabel.setStyle(statusPillStyle(DIM));
 
         Button addBtn = new Button("+");
-        addBtn.setStyle("-fx-background-color: rgba(65, 105, 225, 0.8);"
-                + " -fx-text-fill: white;"
-                + " -fx-background-radius: 4;"
-                + " -fx-cursor: hand;"
-                + " -fx-font-weight: bold;");
-        addBtn.setPrefSize(28, 28);
+        addBtn.setStyle(smallBtnStyle(GOLD));
         addBtn.setOnAction(e -> onAddAccount());
-
         Button removeBtn = new Button("−");
-        removeBtn.setStyle("-fx-background-color: rgba(80, 80, 80, 0.8);"
-                + " -fx-text-fill: white;"
-                + " -fx-background-radius: 4;"
-                + " -fx-cursor: hand;"
-                + " -fx-font-weight: bold;");
-        removeBtn.setPrefSize(28, 28);
+        removeBtn.setStyle(smallBtnStyle("#6b5a3e"));
         removeBtn.setOnAction(e -> onRemoveAccount());
+        HBox acctRow = new HBox(6, accountDropdown, addBtn, removeBtn);
+        HBox.setHgrow(accountDropdown, Priority.ALWAYS);
 
-        HBox accountBar = new HBox(8, accountLabel, accountDropdown, addBtn, removeBtn);
-        accountBar.setAlignment(Pos.CENTER_LEFT);
+        Button discord = new Button("Log in with Discord");
+        discord.setFont(Font.font("System", FontWeight.BOLD, 12.5));
+        discord.setMaxWidth(Double.MAX_VALUE);
+        discord.setStyle("-fx-background-color: " + DISCORD + "; -fx-text-fill: white; -fx-background-radius: 9;"
+                + " -fx-cursor: hand; -fx-padding: 11;");
+        discord.setOnAction(e -> onDiscordLogin());
 
-        VBox bottomLeft = new VBox(8, accountBar, progressBox);
-        bottomLeft.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(bottomLeft, Priority.ALWAYS);
+        Region grow = new Region();
+        VBox.setVgrow(grow, Priority.ALWAYS);
 
-        HBox footer = new HBox(20, bottomLeft, playButton);
-        footer.setAlignment(Pos.CENTER);
-        footer.setPadding(new Insets(16, 22, 18, 22));
-        footer.setStyle("-fx-background-color: rgba(26, 26, 26, 0.85);"
-                + " -fx-border-color: " + ACCENT + ";"
-                + " -fx-border-width: 2 0 0 0;");
-
-        // Populate dropdown with saved accounts.
+        panel.getChildren().addAll(base, playButton,
+                label("GAME CLIENT"), client,
+                label("CHARACTER"), acctRow,
+                serverStatusLabel, grow, discord);
         refreshAccountDropdown();
-        return footer;
+        return panel;
     }
 
-    // ── Background tasks ──────────────────────────────────────────────────
-
-    private void refreshStatus() {
-        background.submit(() -> {
-            try {
-                ServerStatus status = fetcher.fetchStatus();
-                Platform.runLater(() -> {
-                    if (status == null) {
-                        serverStatusLabel.setText("● Status unavailable");
-                        serverStatusLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
-                    } else if (status.online) {
-                        serverStatusLabel.setText("● Online — " + status.playerCount + " players");
-                        serverStatusLabel.setStyle("-fx-text-fill: #6bd16b;");
-                    } else {
-                        serverStatusLabel.setText("● Offline");
-                        serverStatusLabel.setStyle("-fx-text-fill: #d16b6b;");
-                    }
-                });
-            } catch (Exception ex) {
-                logger.warn("Could not fetch server status: {}", ex.getMessage());
-                Platform.runLater(() -> {
-                    serverStatusLabel.setText("● Status unavailable");
-                    serverStatusLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
-                });
-            }
-        });
-        // Re-check every 60s.
-        background.schedule(this::refreshStatus, 60, TimeUnit.SECONDS);
+    private Label label(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font("System", 11));
+        l.setStyle("-fx-text-fill: " + DIM2 + "; -fx-letter-spacing: 2;");
+        return l;
     }
+
+    private String dropdownStyle() {
+        return "-fx-background-color: " + PANEL + "; -fx-border-color: " + LINE2 + ";"
+                + " -fx-border-radius: 9; -fx-background-radius: 9;";
+    }
+
+    private String statusPillStyle(String colour) {
+        return "-fx-text-fill: " + colour + "; -fx-background-color: rgba(0,0,0,0.3); -fx-background-radius: 9;"
+                + " -fx-border-color: " + LINE + "; -fx-border-radius: 9; -fx-padding: 9 12 9 12;";
+    }
+
+    private String smallBtnStyle(String colour) {
+        return "-fx-background-color: " + colour + "; -fx-text-fill: white; -fx-background-radius: 8;"
+                + " -fx-min-width: 30; -fx-min-height: 30; -fx-font-weight: bold; -fx-cursor: hand;";
+    }
+
+    // ── Bottom bar: status + version ────────────────────────────────────────
+
+    private Region buildBottomBar() {
+        statusLabel = new Label("Starting…");
+        statusLabel.setFont(Font.font("System", 12));
+        statusLabel.setStyle("-fx-text-fill: " + DIM + ";");
+        fileLabel = new Label("");
+        fileLabel.setFont(Font.font("System", 10));
+        fileLabel.setStyle("-fx-text-fill: " + DIM2 + ";");
+        progressBar = new ProgressBar(0);
+        progressBar.setPrefWidth(160);
+        progressBar.setPrefHeight(5);
+        progressBar.setStyle("-fx-accent: " + GOLD + ";");
+        HBox left = new HBox(12, statusLabel, fileLabel, progressBar);
+        left.setAlignment(Pos.CENTER_LEFT);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label version = new Label("Oasis Launcher v" + LauncherSelfUpdater.CURRENT_VERSION);
+        version.setFont(Font.font("System", 12));
+        version.setStyle("-fx-text-fill: " + DIM2 + ";");
+
+        HBox bar = new HBox(12, left, spacer, version);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(0, 18, 0, 18));
+        bar.setMinHeight(35);
+        bar.setStyle("-fx-background-color: #130d07; -fx-border-color: " + LINE2 + "; -fx-border-width: 1 0 0 0;");
+        return bar;
+    }
+
+    // ── News (Discord-post cards) ───────────────────────────────────────────
 
     private void loadNews() {
         background.submit(() -> {
@@ -352,69 +424,188 @@ public class LauncherWindow {
             } catch (Exception ex) {
                 logger.warn("Could not fetch news: {}", ex.getMessage());
                 Platform.runLater(() -> {
-                    newsBox.getChildren().clear();
-                    Label header = new Label("Latest News");
-                    header.setFont(Font.font("System", FontWeight.BOLD, 14));
-                    header.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-                    Label err = new Label("Could not load news.");
-                    err.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
-                    newsBox.getChildren().addAll(header, err);
+                    newsGrid.getChildren().clear();
+                    Label err = new Label("Could not load updates.");
+                    err.setStyle("-fx-text-fill: " + DIM + ";");
+                    newsGrid.getChildren().add(err);
                 });
             }
         });
     }
 
     private void renderNews(NewsFeed feed) {
-        newsBox.getChildren().clear();
-        Label header = new Label("Latest News");
-        header.setFont(Font.font("System", FontWeight.BOLD, 14));
-        header.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-        newsBox.getChildren().add(header);
-
-        if (feed == null || feed.articles == null || feed.articles.isEmpty()) {
-            Label empty = new Label("No news yet.");
-            empty.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
-            newsBox.getChildren().add(empty);
+        newsGrid.getChildren().clear();
+        if (feed == null || feed.updates == null || feed.updates.isEmpty()) {
+            Label empty = new Label("No updates yet.");
+            empty.setStyle("-fx-text-fill: " + DIM + ";");
+            newsGrid.getChildren().add(empty);
             return;
         }
-        for (NewsFeed.Article article : feed.articles) {
-            newsBox.getChildren().add(buildArticleCard(article));
+        for (NewsFeed.Update u : feed.updates) {
+            newsGrid.getChildren().add(buildCard(u));
         }
     }
 
-    private Region buildArticleCard(NewsFeed.Article article) {
-        Label title = new Label(article.title != null ? article.title : "(untitled)");
-        title.setFont(Font.font("System", FontWeight.BOLD, 13));
-        title.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
+    private Region buildCard(NewsFeed.Update u) {
+        VBox card = new VBox();
+        card.setPrefWidth(322);
+        card.setMinWidth(300);
+        card.setStyle("-fx-background-color: linear-gradient(to bottom, " + PANEL + ", #241a0e);"
+                + " -fx-background-radius: 12; -fx-border-color: " + LINE + "; -fx-border-radius: 12;");
 
-        Label date = new Label(article.date != null ? article.date : "");
-        date.setFont(Font.font("System", 10));
-        date.setStyle("-fx-text-fill: " + ACCENT + ";");
+        if (u.image != null && !u.image.isBlank()) {
+            ImageView img = new ImageView(new Image(u.image, 322, 104, false, true, true));
+            img.setFitWidth(322);
+            img.setFitHeight(104);
+            StackPane band = new StackPane(img);
+            band.setMinHeight(104);
+            band.setMaxHeight(104);
+            band.setStyle("-fx-border-color: " + LINE + "; -fx-border-width: 0 0 1 0;");
+            card.getChildren().add(band);
+        }
 
-        Label summary = new Label(article.summary != null ? article.summary : "");
-        summary.setFont(Font.font("System", 12));
-        summary.setStyle("-fx-text-fill: " + TEXT_LIGHT + ";");
-        summary.setWrapText(true);
+        Label title = new Label(u.title != null ? u.title : (u.body != null ? firstLine(u.body) : "(update)"));
+        title.setFont(Font.font("System", FontWeight.BOLD, 14));
+        title.setStyle("-fx-text-fill: " + TEXT + ";");
+        title.setWrapText(true);
 
-        VBox card = new VBox(3, title, date, summary);
-        card.setPadding(new Insets(10, 12, 10, 12));
-        card.setStyle("-fx-background-color: rgba(37, 37, 37, 0.9);"
-                + " -fx-background-radius: 4;");
+        VBox body = new VBox(7);
+        body.setPadding(new Insets(12, 14, 13, 14));
+        body.getChildren().add(title);
+
+        if (u.body != null && !u.body.isBlank()) {
+            Label p = new Label(u.body);
+            p.setFont(Font.font("System", 12));
+            p.setStyle("-fx-text-fill: " + DIM + ";");
+            p.setWrapText(true);
+            p.setMaxHeight(38);
+            body.getChildren().add(p);
+        }
+
+        HBox foot = new HBox(8);
+        foot.setAlignment(Pos.CENTER_LEFT);
+        foot.getChildren().add(avatarNode(u.author, u.avatar));
+        Label who = new Label(u.author != null && !u.author.isBlank() ? u.author : "Oasis");
+        who.setFont(Font.font("System", FontWeight.BOLD, 11.5));
+        who.setStyle("-fx-text-fill: " + GOLD_DIM + ";");
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        Label date = new Label(u.date != null ? u.date : "");
+        date.setFont(Font.font("System", 11));
+        date.setStyle("-fx-text-fill: " + DIM2 + ";");
+        foot.getChildren().addAll(who, gap, date);
+        body.getChildren().add(foot);
+
+        card.getChildren().add(body);
         return card;
     }
 
+    private Region avatarNode(String author, String avatarUrl) {
+        if (avatarUrl != null && !avatarUrl.isBlank()) {
+            ImageView iv = new ImageView(new Image(avatarUrl, 22, 22, false, true, true));
+            iv.setFitWidth(22);
+            iv.setFitHeight(22);
+            iv.setClip(new Circle(11, 11, 11));
+            return new StackPane(iv);
+        }
+        String initial = author != null && !author.isBlank() ? author.substring(0, 1).toUpperCase() : "O";
+        Label a = new Label(initial);
+        a.setAlignment(Pos.CENTER);
+        a.setMinSize(22, 22);
+        a.setPrefSize(22, 22);
+        a.setFont(Font.font("System", FontWeight.BOLD, 10));
+        a.setStyle("-fx-text-fill: #2a1a06; -fx-background-radius: 11;"
+                + " -fx-background-color: radial-gradient(center 34% 28%, radius 66%, " + GOLD_HI + ", " + EMBER + ");");
+        return a;
+    }
+
+    private static String firstLine(String s) {
+        int nl = s.indexOf('\n');
+        return nl < 0 ? s : s.substring(0, nl);
+    }
+
+    private ImageView loadImage(String resource, double fitW, double fitH) {
+        try {
+            InputStream in = getClass().getResourceAsStream(resource);
+            if (in == null) {
+                return null;
+            }
+            Image img = new Image(in);
+            if (img.isError()) {
+                return null;
+            }
+            ImageView v = new ImageView(img);
+            v.setPreserveRatio(true);
+            v.setSmooth(true);
+            if (fitW > 0) {
+                v.setFitWidth(fitW);
+            }
+            if (fitH > 0) {
+                v.setFitHeight(fitH);
+            }
+            return v;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    // ── Game tabs ───────────────────────────────────────────────────────────
+
+    private void selectOasis() {
+        // Oasis is the active base; nothing to switch yet.
+    }
+
+    private void comingSoon(String what) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Coming soon");
+        a.setHeaderText(what + " is coming soon.");
+        a.setContentText("Oasis is the live base for now. More game bases will slot in here.");
+        a.showAndWait();
+    }
+
+    private void onDiscordLogin() {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Discord sign-in");
+        a.setHeaderText("Discord sign-in is being wired up.");
+        a.setContentText("Once the Discord app's Client ID is in, this opens Discord to sign you in.");
+        a.showAndWait();
+    }
+
+    // ── Server status ───────────────────────────────────────────────────────
+
+    private void refreshStatus() {
+        background.submit(() -> {
+            try {
+                ServerStatus status = fetcher.fetchStatus();
+                Platform.runLater(() -> {
+                    if (status == null) {
+                        serverStatusLabel.setText("Server status unavailable");
+                        serverStatusLabel.setStyle(statusPillStyle(DIM));
+                    } else if (status.online) {
+                        serverStatusLabel.setText("●  Online · " + status.playerCount + " players");
+                        serverStatusLabel.setStyle(statusPillStyle(TEAL));
+                    } else {
+                        serverStatusLabel.setText("●  Offline");
+                        serverStatusLabel.setStyle(statusPillStyle("#d68a6a"));
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    serverStatusLabel.setText("Server status unavailable");
+                    serverStatusLabel.setStyle(statusPillStyle(DIM));
+                });
+            }
+        });
+        background.schedule(this::refreshStatus, 60, TimeUnit.SECONDS);
+    }
+
+    // ── Self-update flow ────────────────────────────────────────────────────
+
     private void startUpdateCheck() {
-        // Dev escape hatch: skip the entire update flow. Used when iterating on the
-        // client locally — without this every ./gradlew run on the launcher overwrites
-        // your freshly built client jar with whatever's published to GitHub.
         if (DevMode.isEnabled()) {
             Platform.runLater(() -> {
                 statusLabel.setText("DEV MODE — updates skipped");
-                statusLabel.setStyle("-fx-text-fill: #ffcc66;");
-                java.nio.file.Path jarPath = DevMode.clientJarOverride() != null
-                        ? DevMode.clientJarOverride()
-                        : com.oasis.launcher.util.Platform.clientJar();
-                fileLabel.setText("Launching: " + jarPath);
+                statusLabel.setStyle("-fx-text-fill: " + GOLD_HI + ";");
                 progressBar.setProgress(1.0);
                 playButton.setDisable(false);
             });
@@ -422,239 +613,142 @@ public class LauncherWindow {
         }
         background.submit(() -> {
             try {
-                // ── Step 1: Check if THE LAUNCHER ITSELF needs an update ──
-                //
-                // We fetch the manifest first, look for a LAUNCHER entry,
-                // and if its version is newer than ours, prompt the user
-                // before downloading + installing.
-                Platform.runLater(() -> statusLabel.setText("Checking for launcher update…"));
-                Manifest manifest = fetcher.fetchManifest();
-                Optional<Manifest.ManifestFile> launcherUpdate =
-                        selfUpdater.checkForUpdate(manifest);
-
-                if (launcherUpdate.isPresent()) {
-                    boolean accepted = promptLauncherUpdate(manifest.launcherVersion);
-                    if (accepted) {
-                        applyLauncherUpdate(launcherUpdate.get());
-                        return;  // applyLauncherUpdate calls System.exit
-                    }
-                    logger.info("User declined launcher update; continuing with client update.");
+                Platform.runLater(() -> statusLabel.setText("Checking for updates…"));
+                VersionInfo info = fetcher.fetchVersionInfo();
+                if (selfUpdater.hasUpdate(info)) {
+                    applyLauncherUpdate(info);   // silent + auto-relaunch; does not return
+                    return;
                 }
-
-                // ── Step 2: Normal client/cache/resource update ──
-                Manifest finalManifest = updater.update(new UpdateManager.ProgressListener() {
-                    @Override public void status(String message) {
-                        Platform.runLater(() -> statusLabel.setText(message));
-                    }
-                    @Override public void fileProgress(long downloaded, long total) {
-                        Platform.runLater(() -> fileLabel.setText(formatProgress(downloaded, total)));
-                    }
-                    @Override public void overallProgress(double fraction) {
-                        Platform.runLater(() -> progressBar.setProgress(fraction));
-                    }
-                });
                 Platform.runLater(() -> {
-                    statusLabel.setText("Ready to play — v" + finalManifest.clientVersion);
+                    statusLabel.setText("Ready");
                     fileLabel.setText("");
                     progressBar.setProgress(1.0);
                     playButton.setDisable(false);
                 });
             } catch (Exception ex) {
-                logger.error("Update failed", ex);
+                logger.warn("Update check failed (tolerated): {}", ex.getMessage());
                 Platform.runLater(() -> {
-                    statusLabel.setText("Update failed: " + ex.getMessage());
-                    statusLabel.setStyle("-fx-text-fill: #d16b6b;");
-                    fileLabel.setText("Check your internet connection or try again later.");
-                });
-            }
-        });
-    }
-
-    /**
-     * Shows a confirmation dialog asking the user whether they want to
-     * install a new launcher version. Blocks the background thread until
-     * the user picks; the actual dialog runs on the JavaFX thread.
-     *
-     * @return true if the user clicked "Update now"
-     */
-    private boolean promptLauncherUpdate(String newVersion) {
-        final boolean[] result = {false};
-        final Object lock = new Object();
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Launcher update available");
-            alert.setHeaderText("A new version of the Oasis Launcher is available.");
-            alert.setContentText("Current version: " + LauncherSelfUpdater.CURRENT_VERSION + "\n"
-                    + "New version: " + newVersion + "\n\n"
-                    + "Click 'Update now' to download and install. The launcher "
-                    + "will close while the installer runs (~30 seconds).");
-            ButtonType updateNow = new ButtonType("Update now");
-            ButtonType later = new ButtonType("Later", ButtonType.CANCEL.getButtonData());
-            alert.getButtonTypes().setAll(updateNow, later);
-            Optional<ButtonType> choice = alert.showAndWait();
-            synchronized (lock) {
-                result[0] = choice.isPresent() && choice.get() == updateNow;
-                lock.notifyAll();
-            }
-        });
-        synchronized (lock) {
-            try {
-                lock.wait();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        return result[0];
-    }
-
-    /**
-     * Downloads the launcher MSI and triggers msiexec. Does not return.
-     */
-    private void applyLauncherUpdate(Manifest.ManifestFile file) throws Exception {
-        Platform.runLater(() -> statusLabel.setText("Downloading launcher update…"));
-        selfUpdater.applyUpdate(file, (downloaded, total) -> {
-            Platform.runLater(() -> {
-                fileLabel.setText(formatProgress(downloaded, total));
-                if (total > 0) {
-                    progressBar.setProgress((double) downloaded / total);
-                }
-            });
-        });
-    }
-
-    private void onPlay() {
-        playButton.setDisable(true);
-        statusLabel.setText("Starting client…");
-
-        // Resolve which account (if any) the user picked from the dropdown.
-        Account selected = accountDropdown != null ? accountDropdown.getValue() : null;
-        final String username;
-        final String password;
-        if (selected != null) {
-            username = selected.username;
-            password = selected.rememberPassword
-                    ? credentialStore.load(selected.username).orElse(null)
-                    : null;
-            accountStore.markUsed(selected.username);
-        } else {
-            username = null;
-            password = null;
-        }
-
-        background.submit(() -> {
-            try {
-                gameLauncher.launch(ClientLauncher.DEFAULT_HEAP_MB, username, password);
-                Platform.runLater(() -> {
-                    statusLabel.setText("Client launched — happy gaming!");
-                    background.schedule(
-                            () -> Platform.runLater(() -> stage.close()),
-                            2, TimeUnit.SECONDS);
-                });
-            } catch (Exception ex) {
-                logger.error("Failed to launch client", ex);
-                Platform.runLater(() -> {
-                    statusLabel.setText("Failed to launch: " + ex.getMessage());
+                    statusLabel.setText("Ready");
+                    progressBar.setProgress(1.0);
                     playButton.setDisable(false);
                 });
             }
         });
     }
 
-    // ── Account management ────────────────────────────────────────────────
+    private void applyLauncherUpdate(VersionInfo info) throws Exception {
+        Platform.runLater(() -> statusLabel.setText("Updating… the launcher will reopen"));
+        selfUpdater.applyUpdate(info, (downloaded, total) -> Platform.runLater(() -> {
+            fileLabel.setText(formatProgress(downloaded, total));
+            if (total > 0) {
+                progressBar.setProgress((double) downloaded / total);
+            }
+        }));
+    }
 
-    /** Reloads the dropdown contents from the AccountStore. */
+    // ── Play ────────────────────────────────────────────────────────────────
+
+    private void onPlay() {
+        playButton.setDisable(true);
+        statusLabel.setText("Starting client…");
+        Account selected = accountDropdown != null ? accountDropdown.getValue() : null;
+        final String username = selected != null ? selected.username : null;
+        final String password = selected != null && selected.rememberPassword
+                ? credentialStore.load(selected.username).orElse(null) : null;
+        if (selected != null) {
+            accountStore.markUsed(selected.username);
+        }
+        background.submit(() -> {
+            try {
+                gameLauncher.launch(ClientLauncher.DEFAULT_HEAP_MB, username, password);
+                Platform.runLater(() -> {
+                    statusLabel.setText("Client launched — see you in Oasis!");
+                    background.schedule(() -> Platform.runLater(stage::close), 2, TimeUnit.SECONDS);
+                });
+            } catch (Exception ex) {
+                logger.error("Failed to launch client", ex);
+                Platform.runLater(() -> {
+                    statusLabel.setText("Client not available yet — coming with the next update.");
+                    playButton.setDisable(false);
+                });
+            }
+        });
+    }
+
+    // ── Account management ──────────────────────────────────────────────────
+
     private void refreshAccountDropdown() {
         List<Account> accounts = accountStore.list();
-        ObservableList<Account> items = FXCollections.observableArrayList(accounts);
-        accountDropdown.setItems(items);
-        if (!items.isEmpty()) {
+        accountDropdown.setItems(FXCollections.observableArrayList(accounts));
+        if (!accountDropdown.getItems().isEmpty()) {
             accountDropdown.getSelectionModel().selectFirst();
         }
     }
 
-    /** Opens the "Add account" dialog. */
     private void onAddAccount() {
-        Optional<NewAccountInput> result = showAccountDialog(null);
-        if (result.isEmpty()) return;
+        Optional<NewAccountInput> result = showAccountDialog();
+        if (result.isEmpty()) {
+            return;
+        }
         NewAccountInput input = result.get();
-
         Account account = new Account(input.username, input.rememberPassword);
         account.displayName = input.displayName.isBlank() ? input.username : input.displayName;
         accountStore.save(account);
-
         if (input.rememberPassword && input.password != null && !input.password.isEmpty()) {
-            boolean ok = credentialStore.save(input.username, input.password);
-            if (!ok) {
-                logger.warn("Saving password to credential store failed for {}", input.username);
-            }
+            credentialStore.save(input.username, input.password);
         }
-
         refreshAccountDropdown();
-        // Select the new account.
-        for (Account a : accountDropdown.getItems()) {
-            if (a.username.equalsIgnoreCase(input.username)) {
-                accountDropdown.getSelectionModel().select(a);
-                break;
-            }
-        }
     }
 
-    /** Confirms then removes the currently selected account. */
     private void onRemoveAccount() {
         Account selected = accountDropdown.getValue();
-        if (selected == null) return;
-
+        if (selected == null) {
+            return;
+        }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Remove account");
         confirm.setHeaderText("Remove " + selected.label() + "?");
-        confirm.setContentText("The username and any saved password will be removed from this launcher.");
         Optional<ButtonType> answer = confirm.showAndWait();
-        if (answer.isEmpty() || answer.get() != ButtonType.OK) return;
-
+        if (answer.isEmpty() || answer.get() != ButtonType.OK) {
+            return;
+        }
         credentialStore.delete(selected.username);
         accountStore.remove(selected.username);
         refreshAccountDropdown();
     }
 
-    /**
-     * Shows the add/edit-account dialog. Pass null to add a new one.
-     * Returns the entered values, or empty if the user cancelled.
-     */
-    private Optional<NewAccountInput> showAccountDialog(Account existing) {
+    private Optional<NewAccountInput> showAccountDialog() {
         Dialog<NewAccountInput> dialog = new Dialog<>();
-        dialog.setTitle(existing == null ? "Add account" : "Edit account");
-        dialog.setHeaderText(existing == null
-                ? "Enter the username and (optionally) password for this account."
-                : "Update this account's saved details.");
-
+        dialog.setTitle("Add account");
+        dialog.setHeaderText("Enter the username and (optionally) password for this account.");
         ButtonType save = new ButtonType("Save", ButtonType.OK.getButtonData());
         dialog.getDialogPane().getButtonTypes().addAll(save, ButtonType.CANCEL);
 
         TextField userField = new TextField();
         userField.setPromptText("Username");
-        if (existing != null) userField.setText(existing.username);
-
         TextField displayField = new TextField();
-        displayField.setPromptText("Display label (optional, e.g. 'My Iron')");
-        if (existing != null) displayField.setText(existing.displayName);
-
+        displayField.setPromptText("Display label (optional)");
         PasswordField pwdField = new PasswordField();
-        pwdField.setPromptText("Password (only saved if 'Remember password' is checked)");
-
+        pwdField.setPromptText("Password");
         CheckBox remember = new CheckBox("Remember password securely");
-        remember.setSelected(existing != null && existing.rememberPassword);
 
         GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
+        grid.setHgap(10);
+        grid.setVgap(10);
         grid.setPadding(new Insets(14, 12, 6, 12));
-        grid.add(new Label("Username:"), 0, 0); grid.add(userField, 1, 0);
-        grid.add(new Label("Display:"),  0, 1); grid.add(displayField, 1, 1);
-        grid.add(new Label("Password:"), 0, 2); grid.add(pwdField, 1, 2);
+        grid.add(new Label("Username:"), 0, 0);
+        grid.add(userField, 1, 0);
+        grid.add(new Label("Display:"), 0, 1);
+        grid.add(displayField, 1, 1);
+        grid.add(new Label("Password:"), 0, 2);
+        grid.add(pwdField, 1, 2);
         grid.add(remember, 1, 3);
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(button -> {
-            if (button != save) return null;
+            if (button != save) {
+                return null;
+            }
             NewAccountInput in = new NewAccountInput();
             in.username = userField.getText() == null ? "" : userField.getText().trim();
             in.displayName = displayField.getText() == null ? "" : displayField.getText().trim();
@@ -662,11 +756,9 @@ public class LauncherWindow {
             in.rememberPassword = remember.isSelected();
             return in.username.isEmpty() ? null : in;
         });
-
         return dialog.showAndWait();
     }
 
-    /** Simple holder for new-account-dialog values. */
     private static class NewAccountInput {
         String username;
         String displayName = "";
@@ -675,10 +767,7 @@ public class LauncherWindow {
     }
 
     private static String formatProgress(long downloaded, long total) {
-        if (total <= 0) {
-            return formatBytes(downloaded);
-        }
-        return formatBytes(downloaded) + " / " + formatBytes(total);
+        return total <= 0 ? formatBytes(downloaded) : formatBytes(downloaded) + " / " + formatBytes(total);
     }
 
     private static String formatBytes(long bytes) {

@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.oasis'
-version '2.0.0'
+version '2.0.2'
 
 repositories {
     mavenCentral()
@@ -752,8 +752,10 @@ tasks.register('patchJpackageImage') {
 jlink {
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
 
+    // Installed app name (shown in Windows "Apps", Start menu, taskbar) + the exe name.
+    imageName = 'Oasis'
     launcher {
-        name = 'launcher'
+        name = 'Oasis'
         // Hides the console window on Windows when the .exe runs
         noConsole = true
     }
@@ -771,7 +773,8 @@ jlink {
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
             installerType = 'msi'
             installerOptions += [
-                    '--win-dir-chooser',          // Let user pick install location
+                    '--win-per-user-install',     // install to %LOCALAPPDATA%: silent, no admin/UAC
+                    '--win-upgrade-uuid', '7c3a9e12-4b8d-4f6a-9e21-3d5c8b1f0a2e', // in-place upgrades
                     '--win-shortcut',             // Create Desktop shortcut
                     '--win-menu',                 // Add to Start Menu
                     '--win-menu-group', 'Oasis'
