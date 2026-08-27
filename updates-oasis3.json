@@ -3,21 +3,22 @@
   "updates": [
     {
       "title": "Oasis3 — in production",
-      "date": "2026-08-28",
+      "date": "28 Aug",
       "body": "Development on Oasis3 is underway: a modern RuneScape base targeting rev 949. Core systems are being stood up now.",
-      "author": "Oasis"
+      "author": "Xavier",
+      "badge": "Announcement"
     },
     {
       "title": "Targeting rev 949",
-      "date": "2026-08-28",
+      "date": "28 Aug",
       "body": "Oasis3 is being built on the rev 949 protocol — the groundwork for a full RS3-style Oasis experience on our own server.",
-      "author": "Oasis"
+      "author": "Andrew"
     },
     {
       "title": "What's coming",
-      "date": "2026-08-28",
-      "body": "Custom Oasis content will follow the base once the protocol is solid. Follow along in Discord for milestone drops.",
-      "author": "Oasis"
+      "date": "28 Aug",
+      "body": "Custom Oasis content follows once the protocol is solid. Follow along in Discord for milestone drops.",
+      "author": "Xavier"
     }
   ]
 }

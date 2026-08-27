@@ -3,21 +3,23 @@
   "updates": [
     {
       "title": "OasisOS — migration underway",
-      "date": "2026-08-28",
+      "date": "28 Aug",
       "body": "OasisOS is moving the custom Oasis content onto a modern Old School (rev 240) RuneLite base. Release is close.",
-      "author": "Oasis"
+      "author": "Xavier",
+      "badge": "Migration"
     },
     {
       "title": "Old School RuneLite base",
-      "date": "2026-08-28",
+      "date": "28 Aug",
       "body": "Built on a modern Old School foundation with a custom RuneLite client — items, interfaces and settings are being ported across.",
-      "author": "Oasis"
+      "author": "Andrew"
     },
     {
       "title": "Releasing soon",
-      "date": "2026-08-28",
+      "date": "28 Aug",
       "body": "Once content migration wraps, OasisOS goes live and its Play button lights up right here in the launcher.",
-      "author": "Oasis"
+      "author": "Xavier",
+      "badge": "Coming soon"
     }
   ]
 }

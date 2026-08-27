@@ -34,5 +34,7 @@ public class NewsFeed {
         public String avatar;
         public String image;
         public String link;
+        /** Optional corner tag, e.g. "ANNOUNCEMENT" / "PATCH". */
+        public String badge;
     }
 }

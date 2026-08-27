@@ -31,7 +31,6 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.effect.GaussianBlur;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -46,7 +45,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.apache.logging.log4j.LogManager;
@@ -149,6 +147,7 @@ public class LauncherWindow {
     }
 
     public void show() {
+        Fonts.load();
         selectedBase = bases.get(0);
         root = new BorderPane();
         root.setStyle("-fx-background-color: " + BG + ";");
@@ -156,7 +155,12 @@ public class LauncherWindow {
         root.setCenter(buildBody());
         root.setBottom(buildBottomBar());
 
-        Scene scene = new Scene(root, 1010, 640);
+        Scene scene = new Scene(root, 1024, 660);
+        try {
+            scene.getStylesheets().add(getClass().getResource("/launcher.css").toExternalForm());
+        } catch (Exception ex) {
+            logger.warn("Could not load launcher.css: {}", ex.getMessage());
+        }
         stage.setScene(scene);
         stage.setTitle("Oasis Launcher");
         stage.setResizable(true);
@@ -200,7 +204,7 @@ public class LauncherWindow {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label settings = chip("⚙  Settings");
-        Label account = chip("Xavier  ▾");
+        Region account = userChip("Xavier");
 
         ImageView logo = loadImage("/images/logo.png", -1, 40);
         HBox top = new HBox(6);
@@ -228,7 +232,7 @@ public class LauncherWindow {
     private TabHandle buildTab(GameBase base) {
         Node emblem = monogramEmblem(base.emblemText, base.emblemC1, base.emblemC2);
         Label text = new Label(base.name);
-        text.setFont(Font.font("System", FontWeight.BOLD, 14));
+        text.setFont(Fonts.semi(14));
         HBox tab = new HBox(9, emblem, text);
         tab.setAlignment(Pos.CENTER_LEFT);
         tab.setMinHeight(66);
@@ -292,7 +296,7 @@ public class LauncherWindow {
         l.setMinSize(size, size);
         l.setPrefSize(size, size);
         l.setMaxSize(size, size);
-        l.setFont(Font.font("System", FontWeight.BOLD, size * (letters.length() > 1 ? 0.4 : 0.5)));
+        l.setFont(Fonts.bold(size * (letters.length() > 1 ? 0.4 : 0.5)));
         double r = size / 2;
         l.setStyle("-fx-text-fill: #1c1206; -fx-background-radius: " + r + ";"
                 + " -fx-background-color: radial-gradient(center 34% 28%, radius 72%, " + c1 + ", " + c2 + ");"
@@ -301,10 +305,44 @@ public class LauncherWindow {
     }
 
     private Label chip(String text) {
+        String base = "-fx-text-fill: " + DIM + "; -fx-padding: 8 12 8 12; -fx-background-radius: 9; -fx-cursor: hand;";
+        String hov = "-fx-text-fill: " + TEXT + "; -fx-padding: 8 12 8 12; -fx-background-radius: 9; -fx-cursor: hand;"
+                + " -fx-background-color: rgba(244,181,63,0.07);";
         Label l = new Label(text);
-        l.setFont(Font.font("System", 13));
-        l.setStyle("-fx-text-fill: " + DIM + "; -fx-padding: 8 12 8 12; -fx-background-radius: 9; -fx-cursor: hand;");
+        l.setFont(Fonts.body(13));
+        l.setStyle(base);
+        l.setOnMouseEntered(e -> l.setStyle(hov));
+        l.setOnMouseExited(e -> l.setStyle(base));
         return l;
+    }
+
+    /** The top-right account chip: a gold monogram avatar + name + caret (the "user logo"). */
+    private Region userChip(String name) {
+        String initial = name != null && !name.isBlank() ? name.substring(0, 1).toUpperCase() : "?";
+        Label av = new Label(initial);
+        av.setAlignment(Pos.CENTER);
+        av.setMinSize(28, 28);
+        av.setPrefSize(28, 28);
+        av.setMaxSize(28, 28);
+        av.setFont(Fonts.bold(12));
+        av.setStyle("-fx-text-fill: #2a1a06; -fx-background-radius: 14;"
+                + " -fx-background-color: radial-gradient(center 34% 28%, radius 66%, " + GOLD_HI + ", " + EMBER + ");");
+        Label nm = new Label(name);
+        nm.setFont(Fonts.semi(13));
+        nm.setStyle("-fx-text-fill: " + TEXT + ";");
+        Label caret = new Label("▾");
+        caret.setFont(Fonts.body(11));
+        caret.setStyle("-fx-text-fill: " + GOLD + ";");
+        HBox chip = new HBox(7, av, nm, caret);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(5, 11, 5, 6));
+        String base = "-fx-background-radius: 20; -fx-cursor: hand; -fx-border-color: " + LINE + "; -fx-border-radius: 20;";
+        String hov = "-fx-background-radius: 20; -fx-cursor: hand; -fx-border-color: " + LINE2 + "; -fx-border-radius: 20;"
+                + " -fx-background-color: rgba(244,181,63,0.07);";
+        chip.setStyle(base);
+        chip.setOnMouseEntered(e -> chip.setStyle(hov));
+        chip.setOnMouseExited(e -> chip.setStyle(base));
+        return chip;
     }
 
     // ── Body: content (hero + news) + right play panel ──────────────────────
@@ -317,6 +355,7 @@ public class LauncherWindow {
         newsGrid = new FlowPane(13, 13);
         newsGrid.setPrefWrapLength(660);
         Label loading = new Label("Loading updates…");
+        loading.setFont(Fonts.body(12));
         loading.setStyle("-fx-text-fill: " + DIM + ";");
         newsGrid.getChildren().add(loading);
         content.getChildren().add(newsGrid);
@@ -334,41 +373,45 @@ public class LauncherWindow {
 
     private Region buildHero(GameBase base) {
         StackPane hero = new StackPane();
-        hero.setMinHeight(198);
-        hero.setPrefHeight(198);
+        hero.setMinHeight(190);
+        hero.setPrefHeight(190);
+        hero.setMaxHeight(190);
         hero.setStyle("-fx-background-color: #17100a;");
 
-        // The logo, blurred + darkened, as an ambient backdrop (Xavier's "logo but blurred").
+        // The logo, SHARP (not blurred), covering the banner — Xavier liked it crisp. Bind the image width
+        // to the hero so it always fills; the rounded clip below crops the overflow (a "cover" fit).
         ImageView bg = loadImage("/images/background.png", -1, -1);
         if (bg != null) {
             bg.setPreserveRatio(true);
-            bg.setFitWidth(940);
-            bg.setEffect(new GaussianBlur(28));
+            bg.fitWidthProperty().bind(hero.widthProperty());
             StackPane.setAlignment(bg, Pos.CENTER);
             hero.getChildren().add(bg);
         }
 
+        // Left-to-right darkening so the text stays readable over the art.
         Region tint = new Region();
-        tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(9,6,3,0.95) 0%, rgba(9,6,3,0.64) 46%, rgba(9,6,3,0.24) 100%);");
+        tint.setStyle("-fx-background-color: linear-gradient(to right, rgba(10,7,4,0.9) 0%, rgba(10,7,4,0.32) 52%, transparent);");
         hero.getChildren().add(tint);
 
         Label kick = new Label(base.live ? "LIVE NOW" : "COMING SOON");
-        kick.setFont(Font.font("System", FontWeight.BOLD, 10.5));
+        kick.setFont(Fonts.bold(10.5));
         kick.setMaxWidth(Region.USE_PREF_SIZE);
-        kick.setStyle("-fx-text-fill: #2a1a06; -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD
+        kick.setStyle("-fx-text-fill: #2a1a06; -fx-letter-spacing: 2;"
+                + " -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD
                 + "); -fx-padding: 3 9 3 9; -fx-background-radius: 5;");
         Label title = new Label(base.heroTitle);
-        title.setFont(Font.font("System", FontWeight.BOLD, 27));
+        title.setFont(Fonts.display(28));
         title.setStyle("-fx-text-fill: white;");
         title.setWrapText(true);
-        title.setEffect(new DropShadow(8, Color.rgb(0, 0, 0, 0.7)));
+        title.setEffect(new DropShadow(14, Color.rgb(0, 0, 0, 0.75)));
         Label sub = new Label(base.heroSub);
-        sub.setFont(Font.font("System", 13));
+        sub.setFont(Fonts.body(13));
         sub.setStyle("-fx-text-fill: #e9dcc0;");
         sub.setWrapText(true);
-        VBox txt = new VBox(9, kick, title, sub);
+        sub.setEffect(new DropShadow(8, Color.rgb(0, 0, 0, 0.7)));
+        VBox txt = new VBox(7, kick, title, sub);
         txt.setAlignment(Pos.BOTTOM_LEFT);
-        txt.setMaxWidth(470);
+        txt.setMaxWidth(480);
         txt.setPadding(new Insets(22, 24, 22, 26));
         StackPane.setAlignment(txt, Pos.BOTTOM_LEFT);
         hero.getChildren().add(txt);
@@ -388,16 +431,16 @@ public class LauncherWindow {
 
     private Region buildUpdatesHeader() {
         Label section = new Label("RECENT UPDATES");
-        section.setFont(Font.font("System", FontWeight.BOLD, 14));
-        section.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 3;");
+        section.setFont(Fonts.display(15));
+        section.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 2;");
         Label src = new Label("# synced from Discord");
-        src.setFont(Font.font("System", 10.5));
+        src.setFont(Fonts.body(10.5));
         src.setStyle("-fx-text-fill: #9aa4f5; -fx-background-color: rgba(88,101,242,0.14);"
                 + " -fx-border-color: rgba(88,101,242,0.4); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 3 8 3 8;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label viewAll = new Label("View all →");
-        viewAll.setFont(Font.font("System", FontWeight.BOLD, 12));
+        viewAll.setFont(Fonts.semi(12));
         viewAll.setStyle("-fx-text-fill: " + GOLD_DIM + "; -fx-cursor: hand;");
         HBox head = new HBox(11, section, src, spacer, viewAll);
         head.setAlignment(Pos.CENTER_LEFT);
@@ -415,10 +458,10 @@ public class LauncherWindow {
 
         // Base header: emblem + name + sub.
         Label baseName = new Label(base.name);
-        baseName.setFont(Font.font("System", FontWeight.BOLD, 19));
+        baseName.setFont(Fonts.display(19));
         baseName.setStyle("-fx-text-fill: " + GOLD_HI + ";");
         Label baseSub = new Label(base.sub);
-        baseSub.setFont(Font.font("System", 11));
+        baseSub.setFont(Fonts.body(11));
         baseSub.setStyle("-fx-text-fill: " + DIM2 + ";");
         VBox baseText = new VBox(2, baseName, baseSub);
         HBox header = new HBox(11, monogramEmblem(base.emblemText, base.emblemC1, base.emblemC2, 36), baseText);
@@ -430,7 +473,7 @@ public class LauncherWindow {
         VBox.setVgrow(grow, Priority.ALWAYS);
 
         Button discord = new Button("Log in with Discord");
-        discord.setFont(Font.font("System", FontWeight.BOLD, 12.5));
+        discord.setFont(Fonts.semi(12.5));
         discord.setMaxWidth(Double.MAX_VALUE);
         discord.setStyle("-fx-background-color: " + DISCORD + "; -fx-text-fill: white; -fx-background-radius: 9;"
                 + " -fx-cursor: hand; -fx-padding: 11;");
@@ -441,7 +484,7 @@ public class LauncherWindow {
             playButton.setDisable(true);
             playButton.setMaxWidth(Double.MAX_VALUE);
             playButton.setPrefHeight(54);
-            playButton.setFont(Font.font("System", FontWeight.BOLD, 21));
+            playButton.setFont(Fonts.display(21));
             String playBase = "-fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD + " 52%, " + EMBER
                     + "); -fx-text-fill: #2a1a06; -fx-background-radius: 11; -fx-cursor: hand;";
             String playHover = "-fx-background-color: linear-gradient(to bottom, #ffe7b0, " + GOLD_HI + " 52%, " + GOLD
@@ -487,7 +530,7 @@ public class LauncherWindow {
             });
 
             serverStatusLabel = new Label("Checking server…");
-            serverStatusLabel.setFont(Font.font("System", 12.5));
+            serverStatusLabel.setFont(Fonts.semi(12.5));
             serverStatusLabel.setMaxWidth(Double.MAX_VALUE);
             serverStatusLabel.setStyle(statusPillStyle(DIM));
 
@@ -516,13 +559,13 @@ public class LauncherWindow {
             soon.setAlignment(Pos.CENTER);
             soon.setMaxWidth(Double.MAX_VALUE);
             soon.setPrefHeight(54);
-            soon.setFont(Font.font("System", FontWeight.BOLD, 17));
-            soon.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 2;"
+            soon.setFont(Fonts.display(18));
+            soon.setStyle("-fx-text-fill: " + GOLD + "; -fx-letter-spacing: 3;"
                     + " -fx-background-color: linear-gradient(to bottom, rgba(244,181,63,0.10), rgba(244,181,63,0.03));"
                     + " -fx-background-radius: 11; -fx-border-color: " + LINE2 + "; -fx-border-radius: 11;");
 
             baseStatusLabel = new Label(base.status);
-            baseStatusLabel.setFont(Font.font("System", 13));
+            baseStatusLabel.setFont(Fonts.body(13));
             baseStatusLabel.setWrapText(true);
             baseStatusLabel.setMaxWidth(Double.MAX_VALUE);
             baseStatusLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-background-color: rgba(0,0,0,0.28);"
@@ -536,7 +579,7 @@ public class LauncherWindow {
 
     private Label label(String text) {
         Label l = new Label(text);
-        l.setFont(Font.font("System", 11));
+        l.setFont(Fonts.semi(11));
         l.setStyle("-fx-text-fill: " + DIM2 + "; -fx-letter-spacing: 2;");
         return l;
     }
@@ -560,10 +603,10 @@ public class LauncherWindow {
 
     private Region buildBottomBar() {
         statusLabel = new Label("Starting…");
-        statusLabel.setFont(Font.font("System", 12));
+        statusLabel.setFont(Fonts.body(12));
         statusLabel.setStyle("-fx-text-fill: " + DIM + ";");
         fileLabel = new Label("");
-        fileLabel.setFont(Font.font("System", 10));
+        fileLabel.setFont(Fonts.body(10));
         fileLabel.setStyle("-fx-text-fill: " + DIM2 + ";");
         progressBar = new ProgressBar(0);
         progressBar.setPrefWidth(160);
@@ -575,7 +618,7 @@ public class LauncherWindow {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label version = new Label("Oasis Launcher v" + LauncherSelfUpdater.CURRENT_VERSION);
-        version.setFont(Font.font("System", 12));
+        version.setFont(Fonts.body(12));
         version.setStyle("-fx-text-fill: " + DIM2 + ";");
 
         HBox bar = new HBox(12, left, spacer, version);
@@ -633,35 +676,47 @@ public class LauncherWindow {
     private Region buildCard(NewsFeed.Update u) {
         VBox card = new VBox();
         card.setPrefWidth(314);
-        card.setMinWidth(290);
+        card.setMinWidth(292);
         card.setStyle(cardStyle(false));
 
-        if (u.image != null && !u.image.isBlank()) {
-            ImageView img = new ImageView(new Image(u.image, 322, 104, false, true, true));
-            img.setFitWidth(322);
+        boolean hasImg = u.image != null && !u.image.isBlank();
+        if (hasImg) {
+            ImageView img = new ImageView(new Image(u.image, 314, 104, false, true, true));
+            img.setFitWidth(314);
             img.setFitHeight(104);
             StackPane band = new StackPane(img);
             band.setMinHeight(104);
             band.setMaxHeight(104);
             band.setStyle("-fx-border-color: " + LINE + "; -fx-border-width: 0 0 1 0;");
+            if (u.badge != null && !u.badge.isBlank()) {
+                Label tag = tagPill(u.badge);
+                StackPane.setAlignment(tag, Pos.TOP_LEFT);
+                StackPane.setMargin(tag, new Insets(9, 0, 0, 9));
+                band.getChildren().add(tag);
+            }
             card.getChildren().add(band);
         }
 
-        Label title = new Label(u.title != null ? u.title : (u.body != null ? firstLine(u.body) : "(update)"));
-        title.setFont(Font.font("System", FontWeight.BOLD, 14));
-        title.setStyle("-fx-text-fill: " + TEXT + ";");
-        title.setWrapText(true);
-
         VBox body = new VBox(7);
         body.setPadding(new Insets(12, 14, 13, 14));
+
+        if (!hasImg && u.badge != null && !u.badge.isBlank()) {
+            HBox tagRow = new HBox(tagPill(u.badge));
+            body.getChildren().add(tagRow);
+        }
+
+        Label title = new Label(u.title != null ? u.title : (u.body != null ? firstLine(u.body) : "(update)"));
+        title.setFont(Fonts.semi(14));
+        title.setStyle("-fx-text-fill: " + TEXT + ";");
+        title.setWrapText(true);
         body.getChildren().add(title);
 
         if (u.body != null && !u.body.isBlank()) {
             Label p = new Label(u.body);
-            p.setFont(Font.font("System", 12));
-            p.setStyle("-fx-text-fill: " + DIM + ";");
+            p.setFont(Fonts.body(12));
+            p.setStyle("-fx-text-fill: " + DIM + "; -fx-line-spacing: 1.5;");
             p.setWrapText(true);
-            p.setMaxHeight(38);
+            p.setMaxHeight(40);
             body.getChildren().add(p);
         }
 
@@ -669,12 +724,12 @@ public class LauncherWindow {
         foot.setAlignment(Pos.CENTER_LEFT);
         foot.getChildren().add(avatarNode(u.author, u.avatar));
         Label who = new Label(u.author != null && !u.author.isBlank() ? u.author : "Oasis");
-        who.setFont(Font.font("System", FontWeight.BOLD, 11.5));
+        who.setFont(Fonts.semi(11.5));
         who.setStyle("-fx-text-fill: " + GOLD_DIM + ";");
         Region gap = new Region();
         HBox.setHgrow(gap, Priority.ALWAYS);
         Label date = new Label(u.date != null ? u.date : "");
-        date.setFont(Font.font("System", 11));
+        date.setFont(Fonts.body(11));
         date.setStyle("-fx-text-fill: " + DIM2 + ";");
         foot.getChildren().addAll(who, gap, date);
         body.getChildren().add(foot);
@@ -684,14 +739,14 @@ public class LauncherWindow {
         // Real hover animation (JavaFX ignores CSS :hover transitions — must be done in code):
         // a smooth lift + a warm gold glow, reversing on exit.
         DropShadow rest = new DropShadow(14, Color.rgb(0, 0, 0, 0.5));
-        DropShadow hot = new DropShadow(24, Color.rgb(244, 181, 63, 0.34));
+        DropShadow hot = new DropShadow(22, Color.rgb(244, 181, 63, 0.32));
         card.setEffect(rest);
         TranslateTransition lift = new TranslateTransition(Duration.millis(150), card);
         card.setOnMouseEntered(e -> {
             card.setStyle(cardStyle(true));
             card.setEffect(hot);
             lift.stop();
-            lift.setToY(-6);
+            lift.setToY(-4);
             lift.play();
         });
         card.setOnMouseExited(e -> {
@@ -705,6 +760,17 @@ public class LauncherWindow {
             card.setOnMouseClicked(e -> openLink(u.link));
         }
         return card;
+    }
+
+    /** A small uppercase corner tag pill (e.g. "ANNOUNCEMENT"). */
+    private Label tagPill(String text) {
+        Label t = new Label(text.toUpperCase());
+        t.setFont(Fonts.bold(9.5));
+        t.setMaxWidth(Region.USE_PREF_SIZE);
+        t.setStyle("-fx-text-fill: #2a1a06; -fx-letter-spacing: 1;"
+                + " -fx-background-color: linear-gradient(to bottom, " + GOLD_HI + ", " + GOLD_DIM + ");"
+                + " -fx-background-radius: 5; -fx-padding: 3 8 3 8;");
+        return t;
     }
 
     private String cardStyle(boolean hover) {
@@ -741,7 +807,7 @@ public class LauncherWindow {
         a.setAlignment(Pos.CENTER);
         a.setMinSize(22, 22);
         a.setPrefSize(22, 22);
-        a.setFont(Font.font("System", FontWeight.BOLD, 10));
+        a.setFont(Fonts.bold(10));
         a.setStyle("-fx-text-fill: #2a1a06; -fx-background-radius: 11;"
                 + " -fx-background-color: radial-gradient(center 34% 28%, radius 66%, " + GOLD_HI + ", " + EMBER + ");");
         return a;

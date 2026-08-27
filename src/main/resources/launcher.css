@@ -1,0 +1,89 @@
+/* Oasis launcher — OSRS brown/gold theming for JavaFX controls (scrollbar, combo boxes). */
+
+.root {
+    -fx-focus-color: rgba(244,181,63,0.5);
+    -fx-faint-focus-color: transparent;
+}
+
+/* ── Scroll pane + gold scrollbar ─────────────────────────────────────────── */
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+.scroll-bar:vertical, .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+.scroll-bar:vertical {
+    -fx-pref-width: 11;
+}
+.scroll-bar:horizontal {
+    -fx-pref-height: 11;
+}
+.scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.scroll-bar .thumb {
+    -fx-background-color: rgba(244,181,63,0.26);
+    -fx-background-radius: 8;
+}
+.scroll-bar .thumb:hover {
+    -fx-background-color: rgba(244,181,63,0.48);
+}
+.scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(255,216,132,0.6);
+}
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    -fx-padding: 0;
+}
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-shape: " ";
+    -fx-padding: 0;
+}
+
+/* ── Combo boxes (client / character) ─────────────────────────────────────── */
+.combo-box-base {
+    -fx-background-color: #2b2113;
+    -fx-border-color: rgba(244,181,63,0.34);
+    -fx-border-radius: 9;
+    -fx-background-radius: 9;
+}
+.combo-box .list-cell {
+    -fx-text-fill: #f1e5cb;
+    -fx-background-color: transparent;
+    -fx-padding: 4 8;
+}
+.combo-box .arrow, .combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+.combo-box .arrow {
+    -fx-background-color: #bd8b2c;
+}
+.combo-box-popup .list-view {
+    -fx-background-color: #2b2113;
+    -fx-border-color: rgba(244,181,63,0.34);
+    -fx-border-radius: 9;
+    -fx-background-radius: 9;
+}
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: #2b2113;
+    -fx-text-fill: #f1e5cb;
+    -fx-padding: 8 12;
+}
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #40311a;
+    -fx-text-fill: #ffd884;
+}
+
+/* ── Tooltips / misc ──────────────────────────────────────────────────────── */
+.progress-bar > .track {
+    -fx-background-color: rgba(0,0,0,0.35);
+    -fx-background-radius: 4;
+}
+.progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #bd8b2c, #f4b53f);
+    -fx-background-radius: 4;
+    -fx-padding: 2;
+}
