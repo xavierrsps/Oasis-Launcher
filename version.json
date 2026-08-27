@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.exe",
-  "notes": "New OSRS RuneLite base — redesigned launcher: your real Oasis logo, blurred backdrop, gold theme, Discord sign-in, and it self-updates itself from here on."
+  "version": "2.0.1",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
+  "notes": "Renamed to Oasis, plus silent auto-install and relaunch on update."
 }
