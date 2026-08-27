@@ -1,0 +1,28 @@
+{
+  "articles": [
+    {
+      "title": "Map & Pathing Overhaul",
+      "date": "2026-07-09",
+      "summary": "Major fix: terrain blocking, water tiles, and NPC pathing now fully accurate to OSRS. Players can no longer walk on water. Cliffs, walls, and terrain features correctly block movement. NPC spawns updated to OSRS-accurate positions (25,000+ spawns).",
+      "url": ""
+    },
+    {
+      "title": "Oasis Beta is Live!",
+      "date": "2026-07-05",
+      "summary": "Oasis beta is now open. Full OSRS-accurate combat with new weapon specials, Sarachnis, and more. Report any bugs you find.",
+      "url": ""
+    },
+    {
+      "title": "New Boss Content Added",
+      "date": "2026-07-05",
+      "summary": "Sarachnis is now in the Forthos Dungeon. All DT2 weapon specials (Arclight, Voidwaker, Soulreaper Axe and more) are now live.",
+      "url": ""
+    },
+    {
+      "title": "Launcher Released",
+      "date": "2026-07-05",
+      "summary": "Auto-updating launcher is now live. Cache downloads automatically on first launch.",
+      "url": ""
+    }
+  ]
+}

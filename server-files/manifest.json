@@ -1,0 +1,21 @@
+{
+    "launcherVersion": "1.0.1",
+    "clientVersion": "1.0.9",
+    "cacheVersion": "2026-07-07",
+    "files": [
+        {
+            "name": "Oasis.jar",
+            "type": "CLIENT",
+            "url": "https://github.com/xavierrsps/oasis-launcher-files/releases/download/v1.0.9/Oasis.jar",
+            "sha256": "c6b68d815502800af721b03d1239840dfdf0b4a62218ae485aa972bb3fc07e46",
+            "size": 78708242
+        },
+        {
+            "name": "oasis-cache.zip",
+            "type": "CACHE_ZIP",
+            "url": "https://github.com/xavierrsps/oasis-launcher-files/releases/download/v1.0.8/oasis-cache.zip",
+            "sha256": "f2dfccf9bad66fb2375a253b1cf8a2189c851a686556dd2ffa7ccb872ee8738d",
+            "size": 315613875
+        }
+    ]
+}

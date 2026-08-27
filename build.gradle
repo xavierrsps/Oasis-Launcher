@@ -1,0 +1,813 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'org.beryx.jlink' version '3.0.1'
+}
+
+group 'com.oasis'
+version '2.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+// Match client's toolchain. Both stay on Java 21 because the jlink
+// plugin (3.0.1) can't read Java 23 module descriptors during MSI build.
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+javafx {
+    version = '21'
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.web']
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.22.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.22.0'
+    // JNA for native OS keystore access (Windows Credential Manager,
+    // macOS Keychain, Linux libsecret). Used by CredentialStore.
+    implementation 'net.java.dev.jna:jna:5.14.0'
+    implementation 'net.java.dev.jna:jna-platform:5.14.0'
+}
+
+application {
+    mainClass = 'com.oasis.launcher.Launcher'
+    mainModule = 'com.oasis.launcher'
+}
+
+// ─── Dev-mode run tasks ───────────────────────────────────────────────────
+//
+// These show up in IntelliJ's Gradle tool window under "launcher / Tasks
+// / application" so you can launch them with a double-click — no typing of
+// -D flags or paths.
+//
+// What each one does:
+//   runDev      — skip update check, launch the local Oasis.jar (whichever
+//                 path resolves to the freshly-built client). Fast: no
+//                 client rebuild, no GitHub round-trip.
+//   runDevBuild — same as runDev but rebuilds the client first by calling the
+//                 parent project's :game-client:shadowJar via gradlew. Use
+//                 this after you've edited client code.
+//
+// Both pass:
+//   -Doasis.launcher.dev=true       → LauncherWindow skips updater entirely
+//   -Doasis.client.jar=<auto path>  → ClientLauncher launches that specific
+//                                     jar instead of <dataDir>/Oasis.jar
+
+// Path to the client's fat-jar produced by :game-client:shadowJar.
+// archiveBaseName is "Oasis", classifier/version stripped — matches the
+// filename the launcher expects on GitHub Releases.
+def devClientJar = file("$rootDir/../game-client/build/libs/Oasis.jar")
+
+tasks.register('runDev', JavaExec) { runDevTask ->
+    runDevTask.description = 'Run launcher in DEV mode (skip updates, launch local client jar). Does NOT rebuild the client first — use runDevBuild for that.'
+    runDevTask.group = 'application'
+    runDevTask.dependsOn 'classes'
+
+    runDevTask.mainClass.set('com.oasis.launcher.Launcher')
+    runDevTask.mainModule.set('com.oasis.launcher')
+    runDevTask.classpath = sourceSets.main.runtimeClasspath
+    runDevTask.modularity.inferModulePath = true
+
+    def devArgs = ['-Doasis.launcher.dev=true']
+    if (devClientJar.exists()) {
+        devArgs.add("-Doasis.client.jar=${devClientJar.absolutePath}".toString())
+    }
+    runDevTask.jvmArgs devArgs
+
+    runDevTask.doFirst {
+        if (!devClientJar.exists()) {
+            logger.warn('[runDev] Client jar not found at {}', devClientJar)
+            logger.warn('[runDev] Launcher will fall back to <dataDir>/Oasis.jar — run runDevBuild first or build the client manually.')
+        } else {
+            logger.lifecycle('[runDev] Using client jar: {}', devClientJar)
+        }
+    }
+}
+
+tasks.register('runDevBuild', Exec) {
+    description = 'Build the client (:game-client:shadowJar) AND run launcher in DEV mode.'
+    group = 'application'
+
+    // Invoke the parent project's gradlew to build the client jar. We can't
+    // call :client tasks directly because launcher is its own
+    // standalone Gradle project — not a sub-project of the oasis build.
+    def parentGradlew = org.gradle.internal.os.OperatingSystem.current().isWindows()
+            ? "$rootDir/../gradlew.bat"
+            : "$rootDir/../gradlew"
+    workingDir = file("$rootDir/..")
+    commandLine parentGradlew, ':game-client:shadowJar'
+
+    // After the client build finishes, the runDev task does the actual launch.
+    finalizedBy 'runDev'
+}
+
+// ─── Release tasks (two-stage) ───────────────────────────────────────────
+//
+// Splitting build-and-stage from publish-to-git enforces the right order:
+//
+//   1. ./gradlew :game-launcher:releaseBuild -PrelVer=1.0.1
+//        → builds Oasis.jar, generates manifest.json in server-files/
+//        → prints exact GitHub Release URL + asset path
+//
+//   2. You manually:
+//        - Open the printed URL
+//        - Upload server-files/Oasis.jar reference (the built jar at
+//          game-client/build/libs/Oasis.jar) as a release asset under tag v1.0.1
+//        - Publish the release
+//
+//   3. ./gradlew :game-launcher:releasePush
+//        → copies manifest.json into the oasis-launcher-files repo
+//        → git add/commit/push (reads version from server-files/manifest.json)
+//
+// Why split? If we push the manifest BEFORE the jar is on GitHub, every
+// launcher trying to update gets a 404 from the (not-yet-existing) asset
+// URL. Splitting forces the upload to happen first, guaranteeing the
+// download URL is live before any client sees the new manifest.
+//
+// Optional gradle.properties overrides:
+//   launcherFilesRepoPath=/abs/path/to/oasis-launcher-files
+//     Path to your local clone. If unset, auto-detects
+//     ../../oasis-launcher-files relative to this project.
+
+// Capture -P project properties via gradle.startParameter — this works reliably
+// for command-line args (-PrelVer=X) AND is config-cache safe because it's
+// snapshotted at configuration time as a plain Map.
+//
+// Use -PrelVer not -Pversion: `version` collides with Gradle's built-in
+// project.version property AND PowerShell sometimes mangles unquoted dotted
+// version numbers in -Pversion=X.Y.Z. -PrelVer sidesteps both.
+def cliProps = new HashMap(gradle.startParameter.projectProperties)
+
+// Snapshot the launcher version at config-time. project.version access at
+// execution time inside a task action breaks the configuration cache.
+def launcherProjectVersion = project.version.toString()
+
+tasks.register('releaseBuild') {
+    description = 'Stage 1: build client + generate manifest. Usage: -PrelVer=1.0.1. ' +
+                  'After this, upload Oasis.jar to GitHub Releases, then run releasePush.'
+    group = 'release'
+
+    notCompatibleWithConfigurationCache(
+            'releaseBuild shells out to gradlew with dynamic args')
+
+    doLast {
+        // ── 1. Read + validate properties at execution time ──
+        // Three ways to provide the version, in priority order:
+        //   1. -PrelVer=1.0.1 on the command line (terminal)
+        //   2. OASIS_RELEASE_VERSION env var (sidesteps PowerShell quirks)
+        //   3. release.properties file in this dir (IntelliJ double-click flow)
+        //
+        // The file flow exists because IntelliJ's Gradle task panel double-click
+        // doesn't pass arguments. Edit launcher/release.properties before
+        // each release, then double-click releaseBuild.
+        String relVerInput = cliProps['relVer']?.toString()?.trim()
+        if (relVerInput == null || relVerInput.isEmpty()) {
+            String envVer = System.getenv('OASIS_RELEASE_VERSION')
+            if (envVer != null && !envVer.trim().isEmpty()) {
+                relVerInput = envVer.trim()
+            }
+        }
+        // Read all of release.properties up-front (also used for includeLauncher).
+        def fileProps = new Properties()
+        def releasePropsFile = file('release.properties')
+        if (releasePropsFile.exists()) {
+            releasePropsFile.withInputStream { fileProps.load(it) }
+        }
+        if (relVerInput == null || relVerInput.isEmpty()) {
+            String fromFile = fileProps.getProperty('relVer')?.trim()
+            if (fromFile != null && !fromFile.isEmpty()) {
+                relVerInput = fromFile
+                logger.lifecycle('[releaseBuild] Read version from release.properties: {}', fromFile)
+            }
+        }
+        if (relVerInput == null || relVerInput.isEmpty()) {
+            String seen = cliProps.isEmpty() ? '(none)' : cliProps.keySet().join(', ')
+            throw new GradleException(
+                "No release version provided. Three options:\n\n" +
+                "  A) IntelliJ double-click (recommended): edit\n" +
+                "       launcher/release.properties\n" +
+                "     and set:  relVer=1.0.1\n" +
+                "     Then double-click releaseBuild.\n\n" +
+                "  B) PowerShell terminal (quote the arg!):\n" +
+                "       .\\gradlew.bat :game-launcher:releaseBuild \"-PrelVer=1.0.1\"\n\n" +
+                "  C) Env var:\n" +
+                "       \$env:OASIS_RELEASE_VERSION=\"1.0.1\"\n" +
+                "       .\\gradlew.bat :game-launcher:releaseBuild\n\n" +
+                "Saw -P properties: ${seen}")
+        }
+        String releaseVersion = relVerInput
+        String tag = "v${releaseVersion}"
+        String cacheVersionInput = cliProps['cacheVersion']?.toString()?.trim()
+        String cacheVersion = (cacheVersionInput != null && !cacheVersionInput.isEmpty())
+                ? cacheVersionInput
+                : new java.text.SimpleDateFormat('yyyy-MM-dd').format(new Date())
+
+        logger.lifecycle('[releaseBuild] Target version: {}', releaseVersion)
+        logger.lifecycle('[releaseBuild] Cache version:  {}', cacheVersion)
+
+        // ── 2. Build the client jar ──
+        logger.lifecycle('[releaseBuild] Building client jar…')
+        def parentGradlew = org.gradle.internal.os.OperatingSystem.current().isWindows()
+                ? "$rootDir/../gradlew.bat"
+                : "$rootDir/../gradlew"
+        def buildResult = exec {
+            workingDir = file("$rootDir/..")
+            commandLine parentGradlew, ':game-client:shadowJar'
+        }
+        if (buildResult.exitValue != 0) {
+            throw new GradleException('Client build failed; aborting release.')
+        }
+
+        def clientJar = file("$rootDir/../game-client/build/libs/Oasis.jar")
+        if (!clientJar.exists()) {
+            throw new GradleException("Client jar missing after build: ${clientJar}")
+        }
+        logger.lifecycle('[releaseBuild] Built {} ({} bytes)', clientJar.name, clientJar.length())
+
+        // ── 3. Generate manifest.json in-process ──
+        // We used to shell out to generate-manifest.py, but the python launcher
+        // on Windows is often just the Microsoft Store stub that errors with
+        // exit code 9009 when invoked non-interactively. Inlining the logic in
+        // Groovy removes the python dependency entirely.
+        def serverFiles = file('server-files')
+        def manifestOut = new File(serverFiles, 'manifest.json')
+        logger.lifecycle('[releaseBuild] Generating manifest.json…')
+
+        // ── 3a. Optionally build the launcher MSI ──
+        boolean includeLauncher = Boolean.parseBoolean(
+                fileProps.getProperty('includeLauncher', 'false').trim())
+        File launcherMsi = null
+        if (includeLauncher) {
+            logger.lifecycle('[releaseBuild] includeLauncher=true — building MSI via jpackage…')
+            // parentGradlew is defined earlier in this doLast (Stage 2 client build).
+            def launcherGradlew = org.gradle.internal.os.OperatingSystem.current().isWindows()
+                    ? "$rootDir/gradlew.bat"
+                    : "$rootDir/gradlew"
+            def jpackageResult = exec {
+                workingDir = rootDir
+                commandLine launcherGradlew, 'jpackage'
+            }
+            if (jpackageResult.exitValue != 0) {
+                throw new GradleException('jpackage failed; aborting release.')
+            }
+            // jpackage emits build/jpackage/launcher-<version>.msi
+            def jpackageDir = file("$rootDir/build/jpackage")
+            def msiCandidates = jpackageDir.listFiles({ d, n -> n.endsWith('.msi') } as FilenameFilter)
+            if (msiCandidates == null || msiCandidates.length == 0) {
+                throw new GradleException(
+                        "Expected MSI in ${jpackageDir} after jpackage but found none.")
+            }
+            launcherMsi = msiCandidates[0]
+            logger.lifecycle('[releaseBuild] Built launcher MSI: {} ({} bytes)',
+                    launcherMsi.name, launcherMsi.length())
+        }
+
+        // ── 3b. Optionally collect cache files ──
+        // Players need these for a functional install. Standard set lives in
+        // ~/.oasis/cache/ (overrideable via cacheSourceDir property).
+        boolean includeCache = Boolean.parseBoolean(
+                fileProps.getProperty('includeCache', 'false').trim())
+        String cacheTagSetting = fileProps.getProperty('cacheTag', '').trim()
+        String cacheSourceDirSetting = fileProps.getProperty('cacheSourceDir', '').trim()
+
+        // Cache shipping: bundle everything the client needs as a single zip.
+        // The launcher's UpdateManager auto-extracts CACHE_ZIP into cache/.
+        // Files included: top-level main_file_* + osrs-cache/ + rawmodels/ +
+        // index4/ + Character/ (all loaded by Client.startUp). Excluded:
+        // dev tooling and per-user state.
+        def cacheExcludePatterns = [
+                ~/^\.git.*/,                       // .git, .gitattributes
+                ~/^\.scape-settings\.dat$/,        // per-user settings
+                ~/^profiles\.dat$/,                // per-user profiles
+                ~/^bsp\.jar$/,                     // sprite packer dev tool
+                ~/^runbsp\.bat$/,                  // sprite packer launcher
+                ~/^okhttp/,                        // cached HTTP responses
+                ~/^osrs-cache-rev\d+-active.*/     // alternate OSRS revs
+        ]
+
+        File cacheSourceDir = cacheSourceDirSetting.isEmpty()
+                ? new File(System.getProperty('user.home'), '.oasis/cache')
+                : new File(cacheSourceDirSetting)
+
+        File cacheZip = null
+        if (includeCache) {
+            logger.lifecycle('[releaseBuild] includeCache=true — building cache zip from {}', cacheSourceDir)
+            if (!cacheSourceDir.exists()) {
+                throw new GradleException("Cache source dir not found: ${cacheSourceDir}")
+            }
+            def stagingDir = file("$buildDir/release-staging")
+            stagingDir.mkdirs()
+            cacheZip = new File(stagingDir, 'oasis-cache.zip')
+            if (cacheZip.exists()) cacheZip.delete()
+
+            int entryCount = 0
+            long uncompressedTotal = 0
+            new java.util.zip.ZipOutputStream(new java.io.BufferedOutputStream(
+                    new java.io.FileOutputStream(cacheZip))).withCloseable { zout ->
+                cacheSourceDir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                    def relPath = cacheSourceDir.toPath().relativize(f.toPath())
+                            .toString().replace('\\', '/')
+                    if (cacheExcludePatterns.any { it.matcher(relPath).find() }) {
+                        return
+                    }
+                    // Skip empty files — they get recreated by the client.
+                    if (f.length() == 0L) return
+                    def entry = new java.util.zip.ZipEntry(relPath)
+                    zout.putNextEntry(entry)
+                    f.withInputStream { input ->
+                        byte[] buf = new byte[65536]
+                        int n
+                        while ((n = input.read(buf)) != -1) zout.write(buf, 0, n)
+                    }
+                    zout.closeEntry()
+                    entryCount++
+                    uncompressedTotal += f.length()
+                }
+            }
+            logger.lifecycle('[releaseBuild]   zipped {} files ({} MB uncompressed) → {} MB zip',
+                    entryCount,
+                    Math.round(uncompressedTotal / 1048576.0),
+                    Math.round(cacheZip.length() / 1048576.0))
+        }
+
+        // ── 3c. Generate manifest entries ──
+        // Change this to YOUR_GITHUB_USER/oasis-launcher-files when you create your repo.
+        String repoName = fileProps.getProperty('githubRepo', 'YOUR_GITHUB_USER/oasis-launcher-files').trim()
+        def manifestEntries = []
+
+        // Files we hash for this release (their URLs point at the current tag).
+        def filesToHash = [[clientJar, 'CLIENT']]
+        if (launcherMsi != null) {
+            filesToHash << [launcherMsi, 'LAUNCHER']
+        }
+        if (cacheZip != null) {
+            filesToHash << [cacheZip, 'CACHE_ZIP']
+        }
+        filesToHash.each { entry ->
+            File f = entry[0]
+            String type = entry[1]
+            // Compute SHA-256 streaming so we don't materialise huge files in memory.
+            def digest = java.security.MessageDigest.getInstance('SHA-256')
+            f.withInputStream { input ->
+                byte[] buf = new byte[65536]
+                int n
+                while ((n = input.read(buf)) != -1) {
+                    digest.update(buf, 0, n)
+                }
+            }
+            String hex = digest.digest().encodeHex().toString()
+            manifestEntries << [
+                    name: f.name,
+                    type: type,
+                    url: "https://github.com/${repoName}/releases/download/${tag}/${f.name}",
+                    sha256: hex,
+                    size: f.length()
+            ]
+        }
+
+        // When includeCache=false but cacheTag is set, reference the cache zip
+        // from an earlier release so players still get the cache on fresh
+        // install — without re-uploading 300 MB for a client-only bump.
+        //
+        // We can't recompute hashes (the zip isn't being rebuilt here) so we
+        // look up the previously-released CACHE_ZIP entry from the local
+        // oasis-launcher-files repo's manifest.json and copy its sha256+size+name,
+        // rewriting only the URL to point at cacheTag.
+        if (!includeCache && !cacheTagSetting.isEmpty()) {
+            String launcherFilesPathInput = cliProps['launcherFilesRepoPath']?.toString()?.trim()
+            File launcherFilesRepo = (launcherFilesPathInput != null && !launcherFilesPathInput.isEmpty())
+                    ? file(launcherFilesPathInput)
+                    : file("$rootDir/../../oasis-launcher-files")
+            File previousManifest = new File(launcherFilesRepo, 'manifest.json')
+            if (!previousManifest.exists()) {
+                throw new GradleException(
+                        "cacheTag=${cacheTagSetting} set but no previous manifest found at\n" +
+                        "  ${previousManifest.absolutePath}\n" +
+                        "Either clone the oasis-launcher-files repo there, set\n" +
+                        "  launcherFilesRepoPath=/abs/path  in gradle.properties,\n" +
+                        "or run with includeCache=true to rebuild the cache zip.")
+            }
+            def prev = new groovy.json.JsonSlurper().parse(previousManifest)
+            def prevCacheEntry = prev.files?.find { it.type == 'CACHE_ZIP' }
+            if (prevCacheEntry == null) {
+                throw new GradleException(
+                        "cacheTag=${cacheTagSetting} set but previous manifest at\n" +
+                        "  ${previousManifest.absolutePath}\n" +
+                        "has no CACHE_ZIP entry to reuse. Ship cache first with\n" +
+                        "  includeCache=true, then reference it in later releases.")
+            }
+            String cacheTagRef = cacheTagSetting.startsWith('v') ? cacheTagSetting : "v${cacheTagSetting}"
+            manifestEntries << [
+                    name: prevCacheEntry.name,
+                    type: 'CACHE_ZIP',
+                    url: "https://github.com/${repoName}/releases/download/${cacheTagRef}/${prevCacheEntry.name}",
+                    sha256: prevCacheEntry.sha256,
+                    size: prevCacheEntry.size
+            ]
+            logger.lifecycle('[releaseBuild] Reusing cache from {} ({}, {} MB, sha256={})',
+                    cacheTagRef, prevCacheEntry.name,
+                    Math.round(prevCacheEntry.size / 1048576.0),
+                    prevCacheEntry.sha256.substring(0, 12) + '…')
+        }
+
+        def manifestJson = new groovy.json.JsonBuilder([
+                launcherVersion: launcherProjectVersion,
+                clientVersion: releaseVersion,
+                cacheVersion: cacheVersion,
+                files: manifestEntries
+        ]).toPrettyString()
+        manifestOut.text = manifestJson
+        logger.lifecycle('[releaseBuild] Wrote {}', manifestOut.absolutePath)
+
+        // ── 4. Print next steps: GitHub upload, then releasePush ──
+        logger.lifecycle('')
+        logger.lifecycle('═══════════════════════════════════════════════════════════════')
+        logger.lifecycle('  STAGE 1 DONE. Manifest staged in server-files/. Next steps:')
+        logger.lifecycle('')
+        logger.lifecycle('  1. Open: https://github.com/{}/releases/new', repoName)
+        logger.lifecycle('  2. Tag:  {}', tag)
+        logger.lifecycle('  3. Title: Oasis {}', releaseVersion)
+        logger.lifecycle('  4. Upload as asset(s) (drag-and-drop):')
+        logger.lifecycle('     {}', clientJar.absolutePath)
+        if (launcherMsi != null) {
+            logger.lifecycle('     {}', launcherMsi.absolutePath)
+            logger.lifecycle('     ↑ NEW launcher MSI — also the URL players use to first install.')
+        }
+        if (cacheZip != null) {
+            logger.lifecycle('     {}', cacheZip.absolutePath)
+            logger.lifecycle('     ↑ cache zip ({} MB) — launcher auto-extracts on first run.',
+                    Math.round(cacheZip.length() / 1048576.0))
+        }
+        logger.lifecycle('  5. Publish release')
+        logger.lifecycle('')
+        logger.lifecycle('  6. Then run:')
+        logger.lifecycle('     ./gradlew :game-launcher:releasePush')
+        logger.lifecycle('')
+        logger.lifecycle('  Why split? If we push the manifest before the jar is on')
+        logger.lifecycle('  GitHub, players\' launchers hit a 404 on download.')
+        logger.lifecycle('═══════════════════════════════════════════════════════════════')
+    }
+}
+
+tasks.register('releasePush') {
+    description = 'Stage 2: copy staged manifest.json into oasis-launcher-files repo + git push. ' +
+                  'Run AFTER you\'ve uploaded Oasis.jar to the GitHub Release.'
+    group = 'release'
+
+    notCompatibleWithConfigurationCache(
+            'releasePush shells out to git with dynamic args')
+
+    doLast {
+        // ── 1. Locate staged manifest ──
+        def serverFiles = file('server-files')
+        def stagedManifest = new File(serverFiles, 'manifest.json')
+        if (!stagedManifest.exists()) {
+            throw new GradleException(
+                "No staged manifest.json at ${stagedManifest.absolutePath}.\n" +
+                "Run :game-launcher:releaseBuild -PrelVer=X.Y.Z first.")
+        }
+
+        // ── 2. Locate oasis-launcher-files repo ──
+        String launcherFilesPathInput = cliProps['launcherFilesRepoPath']?.toString()?.trim()
+        File launcherFilesRepo
+        if (launcherFilesPathInput != null && !launcherFilesPathInput.isEmpty()) {
+            launcherFilesRepo = file(launcherFilesPathInput)
+        } else {
+            launcherFilesRepo = file("$rootDir/../../oasis-launcher-files")
+        }
+        if (!launcherFilesRepo.exists() || !new File(launcherFilesRepo, '.git').exists()) {
+            throw new GradleException(
+                "oasis-launcher-files repo not found at: ${launcherFilesRepo.absolutePath}\n" +
+                "Either clone it next to the oasis project, OR set:\n" +
+                "    launcherFilesRepoPath=/abs/path/to/oasis-launcher-files\n" +
+                "in your launcher/gradle.properties.")
+        }
+
+        // ── 3. Parse version out of the staged manifest for the commit message ──
+        def parsed = new groovy.json.JsonSlurper().parse(stagedManifest)
+        String version = parsed.clientVersion
+        String tag = "v${version}"
+
+        logger.lifecycle('[releasePush] Version: {}', version)
+        logger.lifecycle('[releasePush] Launcher-files repo: {}', launcherFilesRepo.absolutePath)
+
+        // ── 4. Copy manifest + news + status into the repo ──
+        // The launcher reads three JSON files from this repo at startup. We
+        // push them as a unit so that a news/status update can ride along
+        // with the manifest bump (or just refresh those alone if manifest
+        // hasn't changed).
+        def filesToCopy = ['manifest.json', 'news.json', 'status.json']
+        filesToCopy.each { name ->
+            def src = new File(serverFiles, name)
+            if (!src.exists()) {
+                logger.warn('[releasePush] Source missing, skipping: {}', src.absolutePath)
+                return
+            }
+            def dst = new File(launcherFilesRepo, name)
+            java.nio.file.Files.copy(
+                    src.toPath(),
+                    dst.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle('[releasePush] Copied {} into repo', name)
+        }
+
+        def gitAdd = exec {
+            workingDir = launcherFilesRepo
+            commandLine 'git', 'add', '-A'
+            ignoreExitValue = true
+        }
+        if (gitAdd.exitValue != 0) {
+            throw new GradleException('git add failed in oasis-launcher-files repo')
+        }
+        def gitCommit = exec {
+            workingDir = launcherFilesRepo
+            commandLine 'git', 'commit', '-m', "Release ${tag}"
+            ignoreExitValue = true
+        }
+        if (gitCommit.exitValue != 0) {
+            logger.warn('[releasePush] git commit failed or nothing changed (manifest already matches).')
+            return
+        }
+        logger.lifecycle('[releasePush] Committed manifest update')
+
+        def gitPush = exec {
+            workingDir = launcherFilesRepo
+            commandLine 'git', 'push'
+            ignoreExitValue = true
+        }
+        if (gitPush.exitValue != 0) {
+            logger.warn('[releasePush] git push failed — push manually from {}', launcherFilesRepo)
+            return
+        }
+        logger.lifecycle('[releasePush] Pushed to remote')
+
+        logger.lifecycle('')
+        logger.lifecycle('═══════════════════════════════════════════════════════════════')
+        logger.lifecycle('  STAGE 2 DONE. {} is live.', tag)
+        logger.lifecycle('  Players\' launchers pick up the new version on next startup.')
+        logger.lifecycle('═══════════════════════════════════════════════════════════════')
+    }
+}
+
+// Ensure the standard jar manifest carries the version so the launcher
+// can read its own version at runtime via getImplementationVersion().
+// This is what LauncherSelfUpdater uses to decide if an update is needed.
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'com.oasis.launcher.Launcher',
+                'Implementation-Version': project.version,
+                'Implementation-Title': 'Oasis Launcher'
+        )
+    }
+}
+
+// Fat jar (single jar with all dependencies - for power users)
+tasks.register('fatJar', Jar) {
+    archiveBaseName = 'launcher'
+    archiveClassifier = 'all'
+    manifest {
+        attributes(
+                'Main-Class': 'com.oasis.launcher.Launcher',
+                'Implementation-Version': project.version,
+                'Implementation-Title': 'Oasis Launcher'
+        )
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// ─── Native wrapper compile (Windows only) ───────────────────────────────
+//
+// We compile a tiny C wrapper EXE that strips poisoned env vars
+// (JAVA_TOOL_OPTIONS, _JAVA_OPTIONS, etc.) before spawning the real
+// jpackage-produced launcher. This protects users who have a system-wide
+// Java agent injected via env vars (typically from a developer toolchain)
+// that would otherwise crash our bundled Java 21 runtime at startup.
+//
+// Requires gcc on PATH (install MSYS2 + mingw-w64-x86_64-gcc).
+
+def isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows()
+
+tasks.register('compileWrapper') {
+    description = 'Compiles the native wrapper EXE that strips poisoned env vars before launching.'
+    group = 'build'
+
+    def sourceFile = file('src/main/native/oasis-wrapper.c')
+    def outputFile = file("$buildDir/native/launcher.exe")
+
+    inputs.file(sourceFile)
+    outputs.file(outputFile)
+
+    onlyIf {
+        if (!isWindows || !sourceFile.exists()) return false
+        // Skip silently if gcc is not on PATH (MSI still works, just without env-var stripping wrapper)
+        def gccFound = ['where', 'gcc'].execute().waitFor() == 0
+        if (!gccFound) logger.lifecycle('[compileWrapper] gcc not found on PATH — skipping wrapper EXE. MSI will still work.')
+        return gccFound
+    }
+
+    doLast {
+        outputFile.parentFile.mkdirs()
+
+        def nativeDir = file('src/main/native')
+        def rcFile = file("$nativeDir/oasis-wrapper.rc")
+        def resObj = file("$buildDir/native/oasis-wrapper.res.o")
+
+        // Step 1: compile the resource file (.rc) into a linkable .o
+        // so the EXE has an embedded icon.
+        if (rcFile.exists()) {
+            def rcResult = exec {
+                ignoreExitValue = true
+                workingDir = nativeDir
+                commandLine 'windres',
+                        '-i', rcFile.absolutePath,
+                        '-o', resObj.absolutePath,
+                        '-O', 'coff'
+            }
+            if (rcResult.exitValue != 0) {
+                throw new GradleException("windres failed to compile resource file.")
+            }
+            println "Compiled resource file: $resObj"
+        }
+
+        // Step 2: compile the C source, linking the resource if present
+        def gccArgs = ['gcc', '-O2', '-s', '-mwindows',
+                       '-o', outputFile.absolutePath,
+                       sourceFile.absolutePath]
+        if (resObj.exists()) {
+            gccArgs.add(resObj.absolutePath)
+        }
+        gccArgs.add('-lshlwapi')
+
+        def result = exec {
+            ignoreExitValue = true
+            commandLine gccArgs
+        }
+        if (result.exitValue != 0) {
+            throw new GradleException(
+                    "Native wrapper compile failed. Make sure gcc (MSYS2 mingw-w64) is on PATH.")
+        }
+        if (!outputFile.exists()) {
+            throw new GradleException("gcc returned 0 but EXE missing: $outputFile")
+        }
+        println "Compiled native wrapper: $outputFile (${outputFile.length()} bytes)"
+    }
+}
+
+// ─── Patch the jpackage image after it's built ───────────────────────────
+//
+// jpackage produces:
+//   build/jpackage/Oasis Launcher/launcher.exe   (the real Java launcher)
+//
+// We:
+//   1. Rename that EXE to "oasis-java-launcher.exe"
+//   2. Drop our wrapper EXE in its place as the new "launcher.exe"
+//
+// Shortcuts created by the MSI still target "launcher.exe" - they
+// just now hit our wrapper, which strips env vars and chains to the real
+// launcher.
+
+tasks.register('patchJpackageImage') {
+    description = 'Replaces the jpackage launcher EXE with our env-var-stripping wrapper.'
+    group = 'build'
+
+    onlyIf { isWindows && file("$buildDir/native/launcher.exe").exists() }
+    dependsOn 'compileWrapper'
+
+    doLast {
+        def appImageDir = file("$buildDir/jpackage/Oasis Launcher")
+        if (!appImageDir.exists()) {
+            appImageDir = file("$buildDir/jpackage/launcher")
+        }
+        if (!appImageDir.exists()) {
+            throw new GradleException(
+                    "jpackage app image dir not found. Checked:\n" +
+                            "  $buildDir/jpackage/Oasis Launcher\n" +
+                            "  $buildDir/jpackage/launcher")
+        }
+
+        def jpackageExe = new File(appImageDir, "launcher.exe")
+        def renamedExe = new File(appImageDir, "oasis-java-launcher.exe")
+        def wrapperExe = file("$buildDir/native/launcher.exe")
+
+        // jpackage also produces a .cfg file in app/ that the EXE looks for
+        // by its own name. We need to rename it too so oasis-java-launcher.exe
+        // can find oasis-java-launcher.cfg next to it.
+        def appDir = new File(appImageDir, "app")
+        def jpackageCfg = new File(appDir, "launcher.cfg")
+        def renamedCfg = new File(appDir, "oasis-java-launcher.cfg")
+
+        if (!jpackageExe.exists()) {
+            throw new GradleException("jpackage EXE missing: $jpackageExe")
+        }
+        if (!wrapperExe.exists()) {
+            throw new GradleException(
+                    "Wrapper EXE missing: $wrapperExe (did compileWrapper run?)")
+        }
+        if (!jpackageCfg.exists()) {
+            throw new GradleException("jpackage .cfg missing: $jpackageCfg")
+        }
+
+        // 1. Rename jpackage's EXE
+        if (renamedExe.exists()) {
+            renamedExe.delete()
+        }
+        if (!jpackageExe.renameTo(renamedExe)) {
+            throw new GradleException("Could not rename $jpackageExe -> $renamedExe")
+        }
+        println "Renamed jpackage EXE -> ${renamedExe.name}"
+
+        // 2. Rename jpackage's .cfg so the renamed EXE can find it
+        if (renamedCfg.exists()) {
+            renamedCfg.delete()
+        }
+        if (!jpackageCfg.renameTo(renamedCfg)) {
+            throw new GradleException("Could not rename $jpackageCfg -> $renamedCfg")
+        }
+        println "Renamed jpackage .cfg -> ${renamedCfg.name}"
+
+        // 3. Drop our wrapper as the new launcher EXE
+        java.nio.file.Files.copy(
+                wrapperExe.toPath(),
+                jpackageExe.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        println "Installed wrapper as ${jpackageExe.name}"
+    }
+}
+
+// jlink + jpackage: produces a native installer that includes:
+//  - The launcher application
+//  - A minimal Java runtime (so players don't need Java installed)
+//  - A Windows installer that creates Start Menu + Desktop shortcuts
+jlink {
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+
+    launcher {
+        name = 'launcher'
+        // Hides the console window on Windows when the .exe runs
+        noConsole = true
+    }
+
+    // jpackage configuration - produces native installers per OS.
+    jpackage {
+        installerOptions += [
+                '--vendor', 'Oasis',
+                '--description', 'Oasis RSPS Launcher',
+                '--copyright', 'Oasis 2026',
+                '--app-version', project.version
+        ]
+
+        // Windows-specific options
+        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            installerType = 'msi'
+            installerOptions += [
+                    '--win-dir-chooser',          // Let user pick install location
+                    '--win-shortcut',             // Create Desktop shortcut
+                    '--win-menu',                 // Add to Start Menu
+                    '--win-menu-group', 'Oasis'
+            ]
+            imageOptions += ['--icon', "$projectDir/src/main/native/logo.ico"]
+        }
+        if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+            installerType = 'dmg'
+        }
+        if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
+            installerType = 'deb'
+        }
+    }
+}
+
+// ─── Wire up the wrapper patching into jpackage's build flow ─────────────
+//
+// jpackage runs:
+//   jlink -> jpackageImage (makes the app folder) -> jpackage (makes MSI)
+//
+// We inject between jpackageImage and jpackage so the MSI contains our
+// patched EXE layout from the start.
+
+afterEvaluate {
+    if (isWindows) {
+        def jpackageImageTask = tasks.findByName('jpackageImage')
+        def jpackageTask = tasks.findByName('jpackage')
+        def patchTask = tasks.findByName('patchJpackageImage')
+
+        if (jpackageImageTask && jpackageTask && patchTask) {
+            // Patch MUST run after the image is built but BEFORE the MSI is packed.
+            patchTask.dependsOn(jpackageImageTask)
+            jpackageTask.dependsOn(patchTask)
+            // Belt and braces: ensure order even if dependsOn isn't enough.
+            patchTask.mustRunAfter(jpackageImageTask)
+            jpackageTask.mustRunAfter(patchTask)
+        }
+    }
+}

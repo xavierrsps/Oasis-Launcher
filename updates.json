@@ -1,6 +1,11 @@
 {
   "updates": [
     {
+      "date": "2026-08-27",
+      "title": "Oasis 2.0 — New OSRS RuneLite Base",
+      "body": "Oasis has made the jump from the old OasisPS base onto a modern Old School RuneScape foundation (rev 240) running a custom RuneLite client. It's a huge upgrade — a smoother, up-to-date client with RuneLite's quality-of-life built in, and a far stronger, more maintainable base for everything we build next. Custom content is being ported onto the new base now — big things ahead."
+    },
+    {
       "date": "2026-07-14",
       "title": "Launcher v1.0.2",
       "body": "The client now always shows as 'Oasis Client' in the Windows taskbar, and the launcher starts more reliably."
