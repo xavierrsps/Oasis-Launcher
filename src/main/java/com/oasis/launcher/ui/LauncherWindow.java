@@ -365,6 +365,9 @@ public class LauncherWindow {
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         HBox.setHgrow(scroll, Priority.ALWAYS);
+        // Hard-cap the content to the viewport width so the news grid always wraps instead of
+        // overflowing under the right panel.
+        scroll.viewportBoundsProperty().addListener((o, a, b) -> content.setMaxWidth(b.getWidth()));
 
         HBox body = new HBox(scroll, buildRightPanel(selectedBase));
         loadNews(selectedBase);
@@ -378,14 +381,35 @@ public class LauncherWindow {
         hero.setMaxHeight(190);
         hero.setStyle("-fx-background-color: #17100a;");
 
-        // The logo, SHARP (not blurred), covering the banner — Xavier liked it crisp. Bind the image width
-        // to the hero so it always fills; the rounded clip below crops the overflow (a "cover" fit).
-        ImageView bg = loadImage("/images/background.png", -1, -1);
+        // Pre-composed wide banner (logo on the right, faded into dark on the left). SHARP, not blurred.
+        // The image is UNMANAGED so it never inflates the scroll's content width (that was hiding the cards
+        // under the right panel); we size + right-anchor it ourselves as a "cover" fit that keeps the logo.
+        ImageView bg = loadImage("/images/hero.png", -1, -1);
+        if (bg == null) {
+            bg = loadImage("/images/background.png", -1, -1);
+        }
         if (bg != null) {
-            bg.setPreserveRatio(true);
-            bg.fitWidthProperty().bind(hero.widthProperty());
-            StackPane.setAlignment(bg, Pos.CENTER);
-            hero.getChildren().add(bg);
+            final ImageView heroImg = bg;
+            final Image im = heroImg.getImage();
+            heroImg.setManaged(false);
+            heroImg.setPreserveRatio(true);
+            heroImg.setSmooth(true);
+            Runnable cover = () -> {
+                double hw = hero.getWidth(), hh = hero.getHeight();
+                double iw = im.getWidth(), ih = im.getHeight();
+                if (hw <= 0 || hh <= 0 || iw <= 0 || ih <= 0) {
+                    return;
+                }
+                double scale = Math.max(hw / iw, hh / ih);
+                double w = iw * scale, h = ih * scale;
+                heroImg.setFitWidth(w);
+                heroImg.setLayoutX(hw - w);          // right-anchor so the logo is always in view
+                heroImg.setLayoutY((hh - h) / 2);
+            };
+            hero.widthProperty().addListener((o, a, b) -> cover.run());
+            hero.heightProperty().addListener((o, a, b) -> cover.run());
+            hero.getChildren().add(heroImg);
+            Platform.runLater(cover);
         }
 
         // Left-to-right darkening so the text stays readable over the art.
@@ -675,14 +699,15 @@ public class LauncherWindow {
 
     private Region buildCard(NewsFeed.Update u) {
         VBox card = new VBox();
-        card.setPrefWidth(314);
-        card.setMinWidth(292);
+        card.setMinWidth(300);
+        card.setPrefWidth(300);
+        card.setMaxWidth(300);
         card.setStyle(cardStyle(false));
 
         boolean hasImg = u.image != null && !u.image.isBlank();
         if (hasImg) {
-            ImageView img = new ImageView(new Image(u.image, 314, 104, false, true, true));
-            img.setFitWidth(314);
+            ImageView img = new ImageView(new Image(u.image, 300, 104, false, true, true));
+            img.setFitWidth(300);
             img.setFitHeight(104);
             StackPane band = new StackPane(img);
             band.setMinHeight(104);
