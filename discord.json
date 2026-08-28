@@ -1,5 +1,5 @@
 {
   "_comment": "Discord integration for the launcher. Set verifyUrl to your bot's verify endpoint (e.g. https://your-domain/verify) once the VPS is up, and inviteUrl to your Discord invite. The launcher reads this live, so no launcher release is needed to change them. Empty verifyUrl = the launcher still shows Log in with Discord, but says linking isn't switched on yet.",
-  "verifyUrl": "",
-  "inviteUrl": ""
+  "verifyUrl": "https://oasis.oasis-ps.com/api/verify",
+  "inviteUrl": "https://discord.gg/Ggr3kpUZcz"
 }
