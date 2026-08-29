@@ -23,4 +23,5 @@ module com.oasis.launcher {
     exports com.oasis.launcher.account;
 
     opens com.oasis.launcher.model to com.google.gson;
+    opens com.oasis.launcher.account to com.google.gson;
 }

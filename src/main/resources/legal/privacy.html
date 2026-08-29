@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Oasis</title>
+<meta name="description" content="Oasis Privacy Policy — what we collect, why, and your rights. Operated by OASIS-PS, Victoria, Australia.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%E2%9A%96%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<!--
+  Oasis — Privacy Policy (standalone, self-contained; safe to host or open locally).
+  Operator (interim): OASIS-PS — registered Australian business name (sole trader), Victoria.
+  ON INCORPORATION: replace every "OASIS-PS" with "Oasis Games Studio Pty Ltd (ACN xxx xxx xxx)".
+  Not legal advice — a Victorian solicitor should review before commercial reliance.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spectral:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --sand:#faf6ee; --panel:#fffdf8; --ink:#211b12; --ink-soft:#5b5140;
+    --gold:#b07d24; --gold-strong:#8f6212; --palm:#2e5d3b; --line:#e6dcc7;
+    --line-soft:#efe7d6;
+    --shadow:0 1px 2px rgba(60,45,15,.05),0 8px 30px rgba(60,45,15,.06);
+    --maxw:44rem;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }}
+  :root[data-theme="dark"]{
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:5rem}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--sand);color:var(--ink);
+    font-family:"Spectral",Georgia,"Times New Roman",serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  header.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--sand) 88%,transparent);
+    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+  .bar-in{max-width:64rem;margin:0 auto;padding:.7rem 1.25rem;display:flex;align-items:center;gap:1rem}
+  .wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:1.15rem;letter-spacing:.01em;
+    display:flex;align-items:center;gap:.5rem;color:var(--ink);text-decoration:none}
+  .wordmark .brandlogo{height:24px;width:auto;display:block}
+  .wordmark .brandword{font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem;color:var(--ink-soft);letter-spacing:.02em}
+  nav.docnav{margin-left:auto;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+  nav.docnav a{font-family:"Fraunces",serif;font-size:.83rem;font-weight:500;text-decoration:none;
+    color:var(--ink-soft);padding:.35rem .6rem;border-radius:.5rem;text-transform:uppercase;letter-spacing:.06em}
+  nav.docnav a:hover{color:var(--ink);background:var(--line-soft)}
+  nav.docnav a.active{color:var(--ink);background:var(--line-soft);font-weight:600}
+  .ttoggle{border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);width:2rem;height:2rem;
+    border-radius:.55rem;cursor:pointer;font-size:.95rem;display:grid;place-items:center;flex:0 0 auto}
+  .ttoggle:hover{color:var(--ink);border-color:var(--gold)}
+  .ttoggle:focus-visible,nav.docnav a:focus-visible,.toc a:focus-visible,.wordmark:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  main{max-width:var(--maxw);margin:0 auto;padding:0 1.25rem 5rem}
+  .doc{margin-top:1.5rem;padding-top:1.5rem}
+  .doc-head{border-bottom:2px solid var(--gold);padding-bottom:1.1rem;margin-bottom:.4rem}
+  .eyebrow{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.16em;font-size:.72rem;font-weight:600;color:var(--gold-strong)}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(2rem,5vw,2.7rem);line-height:1.08;
+    margin:.35rem 0 .5rem;letter-spacing:-.01em;text-wrap:balance}
+  .meta{font-size:.85rem;color:var(--ink-soft);margin:0}
+  .lead{font-size:1.12rem;color:var(--ink);margin:1.3rem 0 0}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.34rem;line-height:1.2;margin:2.6rem 0 .2rem;
+    padding-top:.6rem;scroll-margin-top:5rem;text-wrap:balance;display:flex;gap:.7rem;align-items:center}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;width:1.75em;height:1.75em;
+    border-radius:50%;background:color-mix(in srgb,var(--gold) 15%,transparent);
+    border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);color:var(--gold-strong);
+    font-size:.72em;font-weight:600;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem;margin:1.5rem 0 .1rem;color:var(--ink)}
+  p{margin:.75rem 0}
+  a{color:var(--palm);text-decoration-thickness:1px;text-underline-offset:2px}
+  strong{font-weight:600}
+  ul,ol{margin:.6rem 0;padding-left:1.35rem}
+  li{margin:.32rem 0}
+  li::marker{color:var(--gold)}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1.05rem 1.25rem;margin:1.6rem 0 .5rem;box-shadow:var(--shadow)}
+  .toc p{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;font-weight:600;color:var(--ink-soft);margin:0 0 .5rem}
+  .toc ol{columns:2;column-gap:2rem;margin:0;padding-left:1.1rem;font-size:.92rem}
+  .toc a{color:var(--ink-soft);text-decoration:none}
+  .toc a:hover{color:var(--palm);text-decoration:underline}
+  @media (max-width:34rem){.toc ol{columns:1}}
+  hr.rule{border:none;border-top:1px solid var(--line);margin:3.5rem 0 0}
+  .backtop{font-family:"Fraunces",serif;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);text-decoration:none;display:inline-block;margin-top:1rem}
+  .backtop:hover{color:var(--palm)}
+  footer{max-width:var(--maxw);margin:0 auto;padding:2.5rem 1.25rem;border-top:1px solid var(--line);color:var(--ink-soft);font-size:.85rem;text-align:center}
+  footer a{color:var(--ink-soft)} footer .dot{color:var(--gold)}
+</style>
+</head>
+<body>
+<span id="top"></span>
+<header class="bar">
+  <div class="bar-in">
+    <a class="wordmark" href="index.html"><img class="brandlogo" src="logo.png" alt="Oasis"><span class="brandword">Legal</span></a>
+    <nav class="docnav" aria-label="Documents">
+      <a href="terms.html">Terms of Service</a>
+      <a href="privacy.html" class="active" aria-current="page">Privacy Policy</a>
+      <a href="rules.html">Game Rules</a>
+    </nav>
+    <button class="ttoggle" id="tt" title="Toggle light / dark" aria-label="Toggle light or dark theme">◑</button>
+  </div>
+</header>
+
+<main>
+<article class="doc">
+  <div class="doc-head">
+    <div class="eyebrow">Oasis Private Server</div>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Effective 29 August 2026 · Data controller OASIS-PS · support@oasis-ps.com</p>
+  </div>
+  <p class="lead">This policy explains what personal information Oasis collects, why, who we share it with, how long we keep it, and the rights you have over it. We keep what we collect to the minimum we need to run the game — and we never sell your data.</p>
+
+  <div class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#p1">Who we are</a></li>
+      <li><a href="#p2">What we collect</a></li>
+      <li><a href="#p3">How we use it</a></li>
+      <li><a href="#p4">Legal bases (EU/UK)</a></li>
+      <li><a href="#p5">Who we share it with</a></li>
+      <li><a href="#p6">Cookies &amp; the launcher</a></li>
+      <li><a href="#p7">How long we keep it</a></li>
+      <li><a href="#p8">Your rights</a></li>
+      <li><a href="#p9">Children</a></li>
+      <li><a href="#p10">Security</a></li>
+      <li><a href="#p11">International transfers</a></li>
+      <li><a href="#p12">Changes</a></li>
+      <li><a href="#p13">Contact</a></li>
+    </ol>
+  </div>
+
+  <h2 id="p1"><span class="num">1.</span> Who we are</h2>
+  <p>Oasis is operated by <strong>OASIS-PS</strong>, a registered Australian business name, which is responsible for your personal information under this policy. If you have any privacy question, contact us at <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a>.</p>
+
+  <h2 id="p2"><span class="num">2.</span> What information we collect</h2>
+  <p><strong>Information you give us</strong></p>
+  <ul>
+    <li>Account details — the username and password you choose, and (if you provide one) an email address.</li>
+    <li>Discord information — if you link your Discord account to Oasis, we receive your Discord user ID, username and avatar so we can connect it to your account. We do not receive your Discord password.</li>
+    <li>Purchase information — when you buy from our store, our payment provider processes your payment and passes us the details we need to deliver and support it (such as your email, the order, and confirmation of payment). Your full card details are handled by the payment provider, not stored by us.</li>
+    <li>Support and community content — messages you send us, support tickets, and anything you post in game, on our forums or in our Discord.</li>
+  </ul>
+  <p><strong>Information we collect automatically</strong></p>
+  <ul>
+    <li>Technical data — your IP address, approximate region, client/launcher version and device information.</li>
+    <li>Gameplay data — your character, stats, inventory, progress, in-game activity, and login/logout times.</li>
+    <li>Logs — records of actions on your account used for support, security and anti-cheat.</li>
+  </ul>
+  <p><strong>Information from third parties</strong></p>
+  <ul>
+    <li>From Discord, when you choose to link your account (as above).</li>
+    <li>From our payment provider, confirming and reconciling transactions and any disputes.</li>
+  </ul>
+
+  <h2 id="p3"><span class="num">3.</span> How we use your information</h2>
+  <ul>
+    <li>To run the game — create and maintain your account, save your progress, and provide the launcher, website and Discord.</li>
+    <li>To process purchases — deliver Virtual Content, keep transaction records, and handle refunds and disputes.</li>
+    <li>To support you — answer tickets and questions and investigate problems.</li>
+    <li>To keep Oasis fair and secure — detect and prevent cheating, botting, fraud, ban evasion, and abuse, and enforce our Terms and Rules.</li>
+    <li>To communicate with you — send service messages such as account, security or purchase notices, and (only where you’d expect it) news and updates.</li>
+    <li>To meet legal obligations — comply with the law and respond to lawful requests.</li>
+  </ul>
+
+  <h2 id="p4"><span class="num">4.</span> Legal bases (EU/UK players)</h2>
+  <p>If you are in the EU or UK, we rely on: <strong>contract</strong> — to provide the Service you sign up for and process your purchases; <strong>legitimate interests</strong> — to keep Oasis secure, prevent cheating and fraud, and improve the game, balanced against your rights; <strong>consent</strong> — where we ask for it, for example optional communications, which you can withdraw at any time; and <strong>legal obligation</strong> — where the law requires us to process or retain information.</p>
+
+  <h2 id="p5"><span class="num">5.</span> Who we share it with</h2>
+  <p>We do <strong>not</strong> sell your personal information, and we do not run third-party advertising networks on you. We share information only as needed to run the Service:</p>
+  <ul>
+    <li><strong>Payment providers</strong> (such as PayPal and/or Stripe) — to process payments and handle disputes. They handle your payment details under their own privacy policies.</li>
+    <li><strong>Infrastructure providers</strong> — hosting, servers and similar technical services that operate the game on our behalf.</li>
+    <li><strong>Discord</strong> — where you link your account or use our Discord community, governed by Discord’s own policies.</li>
+    <li><strong>Other players and the public</strong> — your in-game name and anything you post in public chat, forums or Discord are visible to others.</li>
+    <li><strong>Law &amp; safety</strong> — authorities or others where we reasonably believe it is required by law, to enforce our Terms, or to protect the rights, property or safety of our players, the public or us.</li>
+  </ul>
+
+  <h2 id="p6"><span class="num">6.</span> Cookies &amp; the launcher</h2>
+  <p>Our website and launcher use a small number of cookies and similar local storage to keep you signed in, remember your settings, and keep things working. We do not use them for third-party ad tracking. You can control cookies through your browser; if you block them, some features may not work. The Oasis launcher stores data locally on your computer (such as your settings and login session) to run and update itself.</p>
+
+  <h2 id="p7"><span class="num">7.</span> How long we keep it</h2>
+  <p>We keep your information for as long as your account is active and for a reasonable period afterwards to support you, resolve disputes, prevent ban evasion and fraud, and meet legal or accounting requirements. As a general guide: account and character data is kept while your account exists; technical and security logs are kept for a limited period and then deleted or anonymised; and purchase records are kept for as long as tax and accounting law requires. When we no longer need information, we delete or anonymise it.</p>
+
+  <h2 id="p8"><span class="num">8.</span> Your rights</h2>
+  <p>Depending on where you live, you may have the right to: access the personal information we hold about you; correct it if it’s wrong; ask us to delete it; object to or restrict certain uses; withdraw consent you’ve given; and receive a copy in a portable format. To exercise any of these, contact <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> — we’ll respond within the time the law allows. Some information we may need to keep (for example, to prevent ban evasion or to meet legal duties), and we’ll explain if that applies.</p>
+  <p>If you are in <strong>Australia</strong>, we handle your personal information consistent with the Australian Privacy Principles, and you may raise a concern with us or complain to the Office of the Australian Information Commissioner (<a href="https://www.oaic.gov.au">oaic.gov.au</a>). If you are in the <strong>EU/UK</strong> you may also complain to your local data-protection authority, and if you are in <strong>California</strong> you have rights under the CCPA, including the right not to be discriminated against for exercising them.</p>
+
+  <h2 id="p9"><span class="num">9.</span> Children</h2>
+  <p>Oasis is not directed at young children, and we do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe a child under 13 has given us personal information, contact <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> and we will delete it. Where a higher minimum age for data consent applies in your country, that age applies instead.</p>
+
+  <h2 id="p10"><span class="num">10.</span> Security</h2>
+  <p>We use reasonable technical and organisational measures to protect your information, and we limit access to those who need it to run the Service. No online service can be completely secure, so we cannot guarantee absolute security — please help by keeping your password private and unique. If a breach affects you, we will notify you and any regulator where the law requires.</p>
+
+  <h2 id="p11"><span class="num">11.</span> International transfers</h2>
+  <p>Oasis is run online and the providers we use may process information in countries other than yours, which may have different data-protection laws. Where we transfer information internationally, we take reasonable steps to ensure it stays protected in line with this policy and applicable law.</p>
+
+  <h2 id="p12"><span class="num">12.</span> Changes to this policy</h2>
+  <p>We may update this policy from time to time. When we make a material change we’ll post the updated version here with a new effective date and, where appropriate, let you know in game, on our website or in our Discord. Continuing to use the Service after a change takes effect means you accept the updated policy.</p>
+
+  <h2 id="p13"><span class="num">13.</span> Contact</h2>
+  <p>Questions, requests or concerns about your privacy? Contact <strong>OASIS-PS</strong> at <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a>.</p>
+
+  <a href="#top" class="backtop">↑ Back to top</a>
+</article>
+</main>
+
+<footer>
+  <span class="dot">◆</span> Oasis — Privacy Policy · OASIS-PS · effective 29 August 2026 · <a href="terms.html">Terms</a> · <a href="rules.html">Rules</a>
+</footer>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('tt'), KEY='oasis-legal-theme';
+    function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+    var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+    if(saved==='dark'||saved==='light'){root.setAttribute('data-theme',saved);}
+    function cur(){return root.getAttribute('data-theme')||sys();}
+    function paint(){btn.textContent=cur()==='dark'?'☀':'☾';}
+    paint();
+    btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem(KEY,n);}catch(e){}paint();});
+  })();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.oasis'
-version '2.0.9'
+version '2.1.0'
 
 repositories {
     mavenCentral()
@@ -78,6 +78,12 @@ tasks.register('runDev', JavaExec) { runDevTask ->
     if (devClientJar.exists()) {
         devArgs.add("-Doasis.client.jar=${devClientJar.absolutePath}".toString())
     }
+    // On the dev module path, Gradle treats build/resources/main as a separate automatic
+    // module, so getResource on the com.oasis.launcher module can't see /legal/*, /launcher.css,
+    // etc. Patch the processed resources back into the module (jlink already does this when packaged).
+    def resourcesMain = file("$buildDir/resources/main")
+    devArgs.add('--patch-module')
+    devArgs.add("com.oasis.launcher=${resourcesMain.absolutePath}".toString())
     runDevTask.jvmArgs devArgs
 
     runDevTask.doFirst {

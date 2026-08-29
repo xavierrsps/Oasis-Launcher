@@ -1,9 +1,11 @@
 package com.oasis.launcher.ui;
 
 import com.oasis.launcher.DevMode;
+import com.oasis.launcher.account.AcceptanceStore;
 import com.oasis.launcher.account.AccountStore;
 import com.oasis.launcher.account.CredentialStore;
 import com.oasis.launcher.account.DiscordLinkStore;
+import com.oasis.launcher.account.DiscordOAuth;
 import com.oasis.launcher.account.DiscordVerifier;
 import com.oasis.launcher.launch.ClientLauncher;
 import com.oasis.launcher.model.Account;
@@ -36,6 +38,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -62,6 +65,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -89,6 +93,9 @@ public class LauncherWindow {
     private static final String LINE = "rgba(244,181,63,0.18)";
     private static final String LINE2 = "rgba(244,181,63,0.34)";
 
+    /** Bump when the legal docs change materially — re-prompts each account to accept the new version. */
+    private static final String TERMS_VERSION = "2026-08-29";
+
     private final Stage stage;
     private final ManifestFetcher fetcher = new ManifestFetcher();
     private final LauncherSelfUpdater selfUpdater = new LauncherSelfUpdater();
@@ -96,7 +103,9 @@ public class LauncherWindow {
     private final AccountStore accountStore = new AccountStore();
     private final CredentialStore credentialStore = new CredentialStore();
     private final DiscordLinkStore discordLinkStore = new DiscordLinkStore();
+    private final AcceptanceStore acceptanceStore = new AcceptanceStore();
     private final DiscordVerifier discordVerifier = new DiscordVerifier();
+    private final DiscordOAuth discordOAuth = new DiscordOAuth();
     private final ScheduledExecutorService background = Executors.newScheduledThreadPool(2, r -> {
         Thread t = new Thread(r, "launcher-bg");
         t.setDaemon(true);
@@ -112,6 +121,8 @@ public class LauncherWindow {
     private ComboBox<Account> accountDropdown;
 
     private BorderPane root;
+    private StackPane sceneRoot;
+    private Region legalOverlay;
     private GameBase selectedBase;
     private Label baseStatusLabel;
     private final List<TabHandle> tabs = new ArrayList<>();
@@ -119,6 +130,8 @@ public class LauncherWindow {
     private DiscordLink discordLink;
     private DiscordConfig discordConfig;
     private VBox discordArea;
+    private boolean updatesReady = false;
+    private boolean termsAccepted = false;
 
     /** The game bases shown as tabs. Both "coming soon" for now; flip {@code live} when one launches. */
     private final List<GameBase> bases = List.of(
@@ -156,6 +169,7 @@ public class LauncherWindow {
 
     public LauncherWindow(Stage stage) {
         this.stage = stage;
+        this.termsAccepted = acceptanceStore.hasAccepted(TERMS_VERSION);
     }
 
     public void show() {
@@ -168,7 +182,8 @@ public class LauncherWindow {
         root.setCenter(buildBody());
         root.setBottom(buildBottomBar());
 
-        Scene scene = new Scene(root, 1024, 660);
+        sceneRoot = new StackPane(root);
+        Scene scene = new Scene(sceneRoot, 1101, 594);
         try {
             scene.getStylesheets().add(getClass().getResource("/launcher.css").toExternalForm());
         } catch (Exception ex) {
@@ -196,6 +211,9 @@ public class LauncherWindow {
         fadeIn.setFromValue(0.0);
         fadeIn.setToValue(1.0);
         fadeIn.play();
+
+        // Mandatory on launch: you must accept the Terms/Rules/Privacy to use the launcher.
+        Platform.runLater(this::showLegalGateOnLaunch);
 
         // Paint the native Windows title bar in the theme (Win11; silent no-op elsewhere). Re-apply once
         // shortly after in case the first call lands before the native window has fully settled.
@@ -603,6 +621,7 @@ public class LauncherWindow {
                     label("CHARACTER"), acctRow,
                     serverStatusLabel, grow, discord);
             refreshAccountDropdown();
+            updatePlayGate();
         } else {
             // Coming-soon base: a "COMING SOON" plate + the current-status callout, no Play/account.
             playButton = null;
@@ -638,6 +657,61 @@ public class LauncherWindow {
         return l;
     }
 
+    /** Enables Play only once updates are ready AND the launcher terms have been accepted. */
+    private void updatePlayGate() {
+        if (playButton != null) {
+            playButton.setDisable(!(updatesReady && termsAccepted));
+        }
+    }
+
+    /**
+     * Shows the Terms/Rules/Privacy gate as an in-app overlay — a centered, scrollable card floating
+     * over the blurred launcher. When the terms haven't been accepted it is a mandatory gate (Agree
+     * unlocks the launcher, Decline exits); once accepted it opens read-only (click outside to close).
+     */
+    private void openLegalDialog() {
+        if (legalOverlay != null) {
+            return; // already showing
+        }
+        boolean require = !termsAccepted;
+        legalOverlay = LegalOverlay.build(require,
+                () -> {                               // onAgreed
+                    termsAccepted = true;
+                    acceptanceStore.accept(TERMS_VERSION);
+                    hideLegalOverlay();
+                    updatePlayGate();
+                },
+                () -> {                               // onDecline — refused the terms, so exit
+                    background.shutdownNow();
+                    stage.close();
+                    Platform.exit();
+                },
+                this::hideLegalOverlay);              // onClose (read-only mode)
+        if (root != null) {
+            root.setEffect(new GaussianBlur(18));
+        }
+        if (sceneRoot != null) {
+            sceneRoot.getChildren().add(legalOverlay);
+        }
+    }
+
+    private void hideLegalOverlay() {
+        if (legalOverlay != null && sceneRoot != null) {
+            sceneRoot.getChildren().remove(legalOverlay);
+        }
+        legalOverlay = null;
+        if (root != null) {
+            root.setEffect(null);
+        }
+    }
+
+    /** Mandatory on launch: you must accept the Terms/Rules/Privacy to use the launcher. */
+    private void showLegalGateOnLaunch() {
+        if (!termsAccepted) {
+            openLegalDialog();
+        }
+    }
+
     private String dropdownStyle() {
         return "-fx-background-color: " + PANEL + "; -fx-border-color: " + LINE2 + ";"
                 + " -fx-border-radius: 9; -fx-background-radius: 9;";
@@ -654,6 +728,27 @@ public class LauncherWindow {
     }
 
     // ── Bottom bar: status + version ────────────────────────────────────────
+
+    /** A self-declared 18+ age-rating badge (NOT the official PEGI mark) for the launcher chrome. */
+    private Region ageBadge() {
+        Label num = new Label("18");
+        num.setFont(Fonts.bold(13));
+        num.setStyle("-fx-text-fill: white;");
+        StackPane square = new StackPane(num);
+        square.setMinSize(26, 26);
+        square.setPrefSize(26, 26);
+        square.setMaxSize(26, 26);
+        square.setStyle("-fx-background-color: #b02a1f; -fx-background-radius: 6;"
+                + " -fx-border-color: rgba(255,255,255,0.16); -fx-border-radius: 6;");
+        Label caption = new Label("18+");
+        caption.setFont(Fonts.semi(11));
+        caption.setStyle("-fx-text-fill: " + DIM + ";");
+        HBox box = new HBox(7, square, caption);
+        box.setAlignment(Pos.CENTER_LEFT);
+        javafx.scene.control.Tooltip.install(box, new javafx.scene.control.Tooltip(
+                "Intended for adults (18+). Contains simulated gambling and optional in-game purchases."));
+        return box;
+    }
 
     private Region buildBottomBar() {
         statusLabel = new Label("Starting…");
@@ -675,7 +770,19 @@ public class LauncherWindow {
         version.setFont(Fonts.body(12));
         version.setStyle("-fx-text-fill: " + DIM2 + ";");
 
-        HBox bar = new HBox(12, left, spacer, version);
+        Label legalBtn = new Label("Terms · Rules · Privacy");
+        legalBtn.setFont(Fonts.body(12));
+        String legalBase = "-fx-text-fill: " + DIM2 + "; -fx-cursor: hand;";
+        String legalHover = "-fx-text-fill: " + GOLD_HI + "; -fx-cursor: hand; -fx-underline: true;";
+        legalBtn.setStyle(legalBase);
+        legalBtn.setOnMouseEntered(e -> legalBtn.setStyle(legalHover));
+        legalBtn.setOnMouseExited(e -> legalBtn.setStyle(legalBase));
+        legalBtn.setOnMouseClicked(e -> openLegalDialog());
+        Label legalSep = new Label("·");
+        legalSep.setFont(Fonts.body(12));
+        legalSep.setStyle("-fx-text-fill: " + LINE2 + ";");
+
+        HBox bar = new HBox(12, left, spacer, ageBadge(), legalBtn, legalSep, version);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(0, 18, 0, 18));
         bar.setMinHeight(35);
@@ -960,8 +1067,111 @@ public class LauncherWindow {
         btn.setStyle(base);
         btn.setOnMouseEntered(e -> btn.setStyle(hov));
         btn.setOnMouseExited(e -> btn.setStyle(base));
-        btn.setOnMouseClicked(e -> showOtpEntry());
+        btn.setOnMouseClicked(e -> startDiscordLogin());
         return btn;
+    }
+
+    /** Browser OAuth if it's configured, otherwise the OTP code entry. */
+    private void startDiscordLogin() {
+        if (discordConfig == null || !discordConfig.oauthEnabled()) {
+            showOtpEntry();
+            return;
+        }
+        String state = discordOAuth.newState();
+        openLink(discordOAuth.startUrl(discordConfig.oauthStartUrl, state));
+        showOAuthWaiting(state);
+    }
+
+    /** "Waiting for Discord…" view: polls the bot until the browser consent completes. */
+    private void showOAuthWaiting(String state) {
+        final String pollUrl = discordConfig.oauthPollUrl;
+        final String startUrl = discordConfig.oauthStartUrl;
+
+        Label hint = new Label("Continue in your browser — approve the Discord login, then come back here.");
+        hint.setFont(Fonts.body(11));
+        hint.setStyle("-fx-text-fill: " + DIM + ";");
+        hint.setWrapText(true);
+
+        Label waiting = new Label("Waiting for Discord…");
+        waiting.setFont(Fonts.semi(12.5));
+        waiting.setStyle("-fx-text-fill: " + TEXT + ";");
+
+        Label err = new Label();
+        err.setFont(Fonts.body(11));
+        err.setStyle("-fx-text-fill: #e08a6a;");
+        err.setWrapText(true);
+        err.setManaged(false);
+        err.setVisible(false);
+
+        Label reopen = new Label("Reopen browser");
+        reopen.setFont(Fonts.body(11));
+        reopen.setStyle("-fx-text-fill: #9aa4f5; -fx-cursor: hand;");
+        reopen.setOnMouseClicked(e -> openLink(discordOAuth.startUrl(startUrl, state)));
+        Label useCode = new Label("Enter a code instead");
+        useCode.setFont(Fonts.body(11));
+        useCode.setStyle("-fx-text-fill: #9aa4f5; -fx-cursor: hand;");
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox links = new HBox(reopen, gap, useCode);
+        links.setAlignment(Pos.CENTER_LEFT);
+
+        Label cancel = new Label("Cancel");
+        cancel.setFont(Fonts.body(11));
+        cancel.setStyle("-fx-text-fill: " + DIM2 + "; -fx-cursor: hand;");
+
+        discordArea.getChildren().setAll(hint, waiting, err, links, cancel);
+
+        // Poll on the background scheduler with a cancel handle + a hard deadline.
+        final ScheduledFuture<?>[] task = new ScheduledFuture<?>[1];
+        final long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(3);
+        Runnable stop = () -> {
+            if (task[0] != null) {
+                task[0].cancel(false);
+            }
+        };
+        cancel.setOnMouseClicked(e -> {
+            stop.run();
+            renderDiscordArea();
+        });
+        useCode.setOnMouseClicked(e -> {
+            stop.run();
+            showOtpEntry();
+        });
+
+        task[0] = background.scheduleWithFixedDelay(() -> {
+            try {
+                if (System.nanoTime() > deadline) {
+                    stop.run();
+                    Platform.runLater(() -> {
+                        waiting.setText("Login timed out.");
+                        err.setText("Didn't hear back from Discord. Reopen the browser, or enter a code instead.");
+                        err.setManaged(true);
+                        err.setVisible(true);
+                    });
+                    return;
+                }
+                DiscordOAuth.PollResult r = discordOAuth.poll(pollUrl, state);
+                if (r.status == DiscordOAuth.PollStatus.LINKED) {
+                    stop.run();
+                    Platform.runLater(() -> {
+                        discordLink = r.link;
+                        discordLinkStore.save(r.link);
+                        renderDiscordArea();
+                    });
+                } else if (r.status == DiscordOAuth.PollStatus.EXPIRED) {
+                    stop.run();
+                    Platform.runLater(() -> {
+                        waiting.setText("Login expired.");
+                        err.setText("That attempt expired. Reopen the browser to try again.");
+                        err.setManaged(true);
+                        err.setVisible(true);
+                    });
+                }
+                // PENDING / ERROR → keep polling until the deadline.
+            } catch (Throwable ignore) {
+                // Never let a stray exception kill the scheduled poll; the deadline still bounds it.
+            }
+        }, 1, 2, TimeUnit.SECONDS);
     }
 
     private void showOtpEntry() {
@@ -1179,7 +1389,8 @@ public class LauncherWindow {
                 statusLabel.setText("DEV MODE — updates skipped");
                 statusLabel.setStyle("-fx-text-fill: " + GOLD_HI + ";");
                 progressBar.setProgress(1.0);
-                if (playButton != null) playButton.setDisable(false);
+                updatesReady = true;
+                updatePlayGate();
             });
             return;
         }
@@ -1195,14 +1406,16 @@ public class LauncherWindow {
                     statusLabel.setText("Ready");
                     fileLabel.setText("");
                     progressBar.setProgress(1.0);
-                    if (playButton != null) playButton.setDisable(false);
+                    updatesReady = true;
+                    updatePlayGate();
                 });
             } catch (Exception ex) {
                 logger.warn("Update check failed (tolerated): {}", ex.getMessage());
                 Platform.runLater(() -> {
                     statusLabel.setText("Ready");
                     progressBar.setProgress(1.0);
-                    if (playButton != null) playButton.setDisable(false);
+                    updatesReady = true;
+                    updatePlayGate();
                 });
             }
         });
@@ -1241,7 +1454,7 @@ public class LauncherWindow {
                 logger.error("Failed to launch client", ex);
                 Platform.runLater(() -> {
                     statusLabel.setText("Client not available yet — coming with the next update.");
-                    if (playButton != null) playButton.setDisable(false);
+                    updatePlayGate();
                 });
             }
         });
@@ -1258,6 +1471,7 @@ public class LauncherWindow {
         if (!accountDropdown.getItems().isEmpty()) {
             accountDropdown.getSelectionModel().selectFirst();
         }
+        updatePlayGate();
     }
 
     private void onAddAccount() {

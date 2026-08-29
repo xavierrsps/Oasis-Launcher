@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Rules — Oasis</title>
+<meta name="description" content="Oasis Game Rules & Code of Conduct — Community, Gameplay, Economy, Security, and Appeals.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%E2%9A%96%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<!--
+  Oasis — Game Rules (standalone mirror of the Discord rulebook). Incorporated into the Terms of Service (§5).
+  Keep this in sync with the bot's content.py DEFAULT_RULES_MESSAGES.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spectral:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --sand:#faf6ee; --panel:#fffdf8; --ink:#211b12; --ink-soft:#5b5140;
+    --gold:#b07d24; --gold-strong:#8f6212; --palm:#2e5d3b; --line:#e6dcc7;
+    --line-soft:#efe7d6; --warn:#a5561d;
+    --shadow:0 1px 2px rgba(60,45,15,.05),0 8px 30px rgba(60,45,15,.06);
+    --maxw:44rem;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --warn:#e0954f; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }}
+  :root[data-theme="dark"]{
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --warn:#e0954f; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:5rem}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--sand);color:var(--ink);
+    font-family:"Spectral",Georgia,"Times New Roman",serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  header.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--sand) 88%,transparent);
+    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+  .bar-in{max-width:64rem;margin:0 auto;padding:.7rem 1.25rem;display:flex;align-items:center;gap:1rem}
+  .wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:1.15rem;letter-spacing:.01em;
+    display:flex;align-items:center;gap:.5rem;color:var(--ink);text-decoration:none}
+  .wordmark .brandlogo{height:24px;width:auto;display:block}
+  .wordmark .brandword{font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem;color:var(--ink-soft);letter-spacing:.02em}
+  nav.docnav{margin-left:auto;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+  nav.docnav a{font-family:"Fraunces",serif;font-size:.83rem;font-weight:500;text-decoration:none;
+    color:var(--ink-soft);padding:.35rem .6rem;border-radius:.5rem;text-transform:uppercase;letter-spacing:.06em}
+  nav.docnav a:hover{color:var(--ink);background:var(--line-soft)}
+  nav.docnav a.active{color:var(--ink);background:var(--line-soft);font-weight:600}
+  .ttoggle{border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);width:2rem;height:2rem;
+    border-radius:.55rem;cursor:pointer;font-size:.95rem;display:grid;place-items:center;flex:0 0 auto}
+  .ttoggle:hover{color:var(--ink);border-color:var(--gold)}
+  .ttoggle:focus-visible,nav.docnav a:focus-visible,.toc a:focus-visible,.wordmark:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  main{max-width:var(--maxw);margin:0 auto;padding:0 1.25rem 5rem}
+  .doc{margin-top:1.5rem;padding-top:1.5rem}
+  .doc-head{border-bottom:2px solid var(--gold);padding-bottom:1.1rem;margin-bottom:.4rem}
+  .eyebrow{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.16em;font-size:.72rem;font-weight:600;color:var(--gold-strong)}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(2rem,5vw,2.7rem);line-height:1.08;
+    margin:.35rem 0 .5rem;letter-spacing:-.01em;text-wrap:balance}
+  .meta{font-size:.85rem;color:var(--ink-soft);margin:0}
+  .lead{font-size:1.12rem;color:var(--ink);margin:1.3rem 0 0}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.34rem;line-height:1.2;margin:2.8rem 0 .2rem;
+    padding-top:.6rem;scroll-margin-top:5rem;text-wrap:balance;display:flex;gap:.6rem;align-items:baseline}
+  h2 .num{color:var(--gold);font-size:1.05em;flex:0 0 auto}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.06rem;margin:1.7rem 0 .1rem;color:var(--ink)}
+  p{margin:.75rem 0}
+  a{color:var(--palm);text-decoration-thickness:1px;text-underline-offset:2px}
+  strong{font-weight:600}
+  ul{margin:.5rem 0;padding-left:0;list-style:none}
+  ul li{margin:.4rem 0;padding-left:2.4rem;position:relative}
+  ul li .rid{position:absolute;left:0;top:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.78rem;font-weight:600;color:var(--gold-strong)}
+  .esc{display:block;background:color-mix(in srgb,var(--warn) 9%,var(--panel));border:1px solid var(--line);
+    border-left:3px solid var(--warn);border-radius:0 .5rem .5rem 0;padding:.5rem .8rem;margin:.65rem 0 0;
+    font-size:.9rem;color:var(--ink-soft)}
+  .esc b{color:var(--warn);font-family:"Fraunces",serif;font-weight:600}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1.05rem 1.25rem;margin:1.6rem 0 .5rem;box-shadow:var(--shadow)}
+  .toc p{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;font-weight:600;color:var(--ink-soft);margin:0 0 .5rem}
+  .toc ol{columns:2;column-gap:2rem;margin:0;padding-left:1.1rem;font-size:.92rem}
+  .toc a{color:var(--ink-soft);text-decoration:none}
+  .toc a:hover{color:var(--palm);text-decoration:underline}
+  @media (max-width:34rem){.toc ol{columns:1}}
+  .callout{background:var(--panel);border:1px solid var(--line);border-radius:.7rem;padding:.95rem 1.15rem;margin:1.1rem 0;font-size:.98rem}
+  .callout strong{font-family:"Fraunces",serif}
+  .factors{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin:1rem 0}
+  @media (max-width:34rem){.factors{grid-template-columns:1fr}}
+  .factor{background:var(--panel);border:1px solid var(--line);border-radius:.6rem;padding:.7rem .85rem}
+  .factor b{font-family:"Fraunces",serif;color:var(--gold-strong);display:block;font-size:.95rem}
+  .factor span{font-size:.86rem;color:var(--ink-soft)}
+  .backtop{font-family:"Fraunces",serif;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);text-decoration:none;display:inline-block;margin-top:1.4rem}
+  .backtop:hover{color:var(--palm)}
+  footer{max-width:var(--maxw);margin:0 auto;padding:2.5rem 1.25rem;border-top:1px solid var(--line);color:var(--ink-soft);font-size:.85rem;text-align:center}
+  footer a{color:var(--ink-soft)} footer .dot{color:var(--gold)}
+</style>
+</head>
+<body>
+<span id="top"></span>
+<header class="bar">
+  <div class="bar-in">
+    <a class="wordmark" href="index.html"><img class="brandlogo" src="logo.png" alt="Oasis"><span class="brandword">Legal</span></a>
+    <nav class="docnav" aria-label="Documents">
+      <a href="terms.html">Terms of Service</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="rules.html" class="active" aria-current="page">Game Rules</a>
+    </nav>
+    <button class="ttoggle" id="tt" title="Toggle light / dark" aria-label="Toggle light or dark theme">◑</button>
+  </div>
+</header>
+
+<main>
+<article class="doc">
+  <div class="doc-head">
+    <div class="eyebrow">Oasis Private Server</div>
+    <h1>Game Rules</h1>
+    <p class="meta">Code of Conduct · incorporated into the <a href="terms.html">Terms of Service</a> (§5)</p>
+  </div>
+  <p class="lead">These rules apply to everyone — across the game and our Discord. By playing Oasis or taking part in the community, you agree to uphold them at all times. They exist to protect the experience for everyone, not to restrict individuals.</p>
+  <p>Staff have the final say on all decisions. If you believe an action taken against you was unfair, open a support ticket rather than arguing publicly. Violations are assessed case by case — <strong>severity, intent, and prior history</strong> are all taken into account.</p>
+
+  <div class="toc" aria-label="Contents">
+    <p>Sections</p>
+    <ol>
+      <li><a href="#community">Community</a></li>
+      <li><a href="#gameplay">Gameplay</a></li>
+      <li><a href="#economy">Economy &amp; Trading</a></li>
+      <li><a href="#security">Security &amp; Accounts</a></li>
+      <li><a href="#appeals">Punishments &amp; Appeals</a></li>
+    </ol>
+  </div>
+
+  <!-- COMMUNITY -->
+  <h2 id="community"><span class="num">◆</span> Community</h2>
+
+  <h3>1 · Respect &amp; Conduct</h3>
+  <ul>
+    <li><span class="rid">1.a</span> Harassment, hate speech, racism, and targeted bullying are not tolerated — in-game or on Discord.</li>
+    <li><span class="rid">1.b</span> Flaming and flame-baiting are not welcome — you are responsible for your responses regardless of provocation.</li>
+    <li><span class="rid">1.c</span> Censor evasion and political or religious discussion in public channels are not permitted.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Warning → mute → suspension. Severe or targeted cases → immediate permanent ban.</p>
+
+  <h3>2 · Disruptive Behaviour</h3>
+  <ul>
+    <li><span class="rid">2.a</span> Griefing, blocking progress, or sabotaging cooperative content is prohibited.</li>
+    <li><span class="rid">2.b</span> Spamming, chat flooding, or excessive pinging across any channel is not tolerated.</li>
+    <li><span class="rid">2.c</span> Yell is a privilege — no URLs, extreme language, controversy, server-bashing, or public disrespect toward Oasis.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Warning → mute → temporary ban for repeat or severe cases.</p>
+
+  <h3>3 · Identity &amp; Impersonation</h3>
+  <ul>
+    <li><span class="rid">3.a</span> Offensive, discriminatory, or impersonating account names will be forcibly changed or removed.</li>
+    <li><span class="rid">3.b</span> Impersonating staff, moderators, or other players — in any form — is strictly forbidden.</li>
+    <li><span class="rid">3.c</span> Accounts created with intent to mislead or confuse others about your identity are prohibited.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Forced rename for minor violations. Impersonating staff → immediate ban.</p>
+
+  <h3>4 · Advertising &amp; Spam</h3>
+  <ul>
+    <li><span class="rid">4.a</span> Advertising other servers, games, or services is not permitted in-game or on Discord.</li>
+    <li><span class="rid">4.b</span> Wearing a competing server’s clan tag in-game is indirect advertising — minimum one-week timeout.</li>
+    <li><span class="rid">4.c</span> Unsolicited promotion via DMs to community members is also covered under this rule.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Warning → temporary ban. Deliberate or mass advertising → immediate permanent ban.</p>
+
+  <!-- GAMEPLAY -->
+  <h2 id="gameplay"><span class="num">◆</span> Gameplay</h2>
+
+  <h3>5 · Cheating &amp; Automation</h3>
+  <ul>
+    <li><span class="rid">5.a</span> Bots, macros, AHK scripts, or any tool that automates in-game actions are forbidden — AFK or not.</li>
+    <li><span class="rid">5.b</span> Covers auto-clickers, mouse recorders, auto-switchers, auto-alchers, and prayer-flick tools.</li>
+    <li><span class="rid">5.c</span> Modified clients or code injections providing any unfair advantage are also prohibited.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Temporary ban for first offence. Permanent ban for repeat or severe cases. No exceptions.</p>
+
+  <h3>6 · Bug Abuse &amp; Exploitation</h3>
+  <ul>
+    <li><span class="rid">6.a</span> Exploiting bugs, glitches, or unintended mechanics for personal gain is prohibited — even temporarily.</li>
+    <li><span class="rid">6.b</span> Report bugs immediately by opening a support ticket. Do not repeat or share details with non-staff until resolved.</li>
+    <li><span class="rid">6.c</span> Punishment scales with the nature, duration, and scale of the abuse.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Stat reset / item removal → temporary ban → permanent ban for deliberate large-scale abuse.</p>
+
+  <h3>7 · Multi-Logging &amp; PVM Farming</h3>
+  <ul>
+    <li><span class="rid">7.a</span> Playing on multiple accounts across different worlds is permitted.</li>
+    <li><span class="rid">7.b</span> Using multiple accounts to farm the same monster spawns across worlds simultaneously is not.</li>
+    <li><span class="rid">7.c</span> This covers Cave Horrors, Temple Spiders, outside GWD boss rooms, and similar areas.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Verbal warning → item removal → temporary ban, scaled to the extent and intent of the farming.</p>
+
+  <!-- ECONOMY -->
+  <h2 id="economy"><span class="num">◆</span> Economy &amp; Trading</h2>
+
+  <h3>8 · Scamming &amp; Fraud</h3>
+  <ul>
+    <li><span class="rid">8.a</span> Agreed deals must be honoured — last-second swaps or backing out after confirmation is scamming.</li>
+    <li><span class="rid">8.b</span> Price manipulation — artificially inflating or deflating item values for personal gain — is prohibited.</li>
+    <li><span class="rid">8.c</span> Report scams by opening a support ticket. Item recovery is not guaranteed, but offenders will always be actioned.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Warning → temp ban → permanent ban for serial offenders.</p>
+
+  <h3>9 · Real-World Trading (RWT)</h3>
+  <ul>
+    <li><span class="rid">9.a</span> Oasis GP and items may only be traded for Oasis GP or items — no external currency or goods.</li>
+    <li><span class="rid">9.b</span> Buying, selling, or transferring accounts, items, or GP for real money is prohibited.</li>
+    <li><span class="rid">9.c</span> Account training for compensation, and even <em>suggesting</em> an RWT deal, are grounds for a ban.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Immediate permanent ban. All items and GP are removed from the game. No exceptions.</p>
+
+  <h3>10 · Gambling</h3>
+  <ul>
+    <li><span class="rid">10.a</span> Player-hosted gambling of any kind is prohibited regardless of consent — all parties are equally liable.</li>
+    <li><span class="rid">10.b</span> The only sanctioned method is Flower Poker (Challenge) in the official gambling area north of Home.</li>
+    <li><span class="rid">10.c</span> The area being unavailable does not permit player-run games of chance.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Items removed. All parties receive a mute or ban, escalating with repeat offences.</p>
+
+  <h3>11 · Voting Integrity</h3>
+  <ul>
+    <li><span class="rid">11.a</span> Do not bypass or manipulate the voting cooldown on any top-list or vote page.</li>
+    <li><span class="rid">11.b</span> VPN voting, multi-account stacking, or any method to inflate vote counts is prohibited.</li>
+    <li><span class="rid">11.c</span> Limit: up to 3 site votes per account — no more than 3 combined votes across accounts within any 12-hour window.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Permanent ban. Severe abuse may result in Oasis being removed from affected vote sites.</p>
+
+  <!-- SECURITY -->
+  <h2 id="security"><span class="num">◆</span> Security &amp; Accounts</h2>
+
+  <h3>12 · Privacy &amp; Personal Safety</h3>
+  <ul>
+    <li><span class="rid">12.a</span> Sharing personal player information without consent (doxxing) — names, IPs, addresses — is prohibited.</li>
+    <li><span class="rid">12.b</span> Threats toward players or the server, including DDoS threats, will not be tolerated under any circumstances.</li>
+    <li><span class="rid">12.c</span> Attempts to compromise the server or any player’s account are treated at maximum severity.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Immediate permanent ban. Serious incidents may be reported to the relevant authorities.</p>
+
+  <h3>13 · Ban Evasion &amp; Account Responsibility</h3>
+  <ul>
+    <li><span class="rid">13.a</span> All activity on your account is your responsibility — “someone else did it” is not a valid defence.</li>
+    <li><span class="rid">13.b</span> Using a second account to bypass any active ban, mute, or restriction is prohibited.</li>
+    <li><span class="rid">13.c</span> Sharing credentials does not reduce accountability — if it’s on your account, it’s on you.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Evasion accounts → immediate permanent ban. The original punishment is extended.</p>
+
+  <h3>14 · Chargebacks</h3>
+  <ul>
+    <li><span class="rid">14.a</span> Initiating a chargeback on any Oasis purchase is a direct violation of our <a href="terms.html">Terms</a>.</li>
+    <li><span class="rid">14.b</span> Chargebacks undermine our financial stability and are taken very seriously — zero exceptions.</li>
+    <li><span class="rid">14.c</span> For billing concerns, contact staff via a ticket before taking external action — we will work with you.</li>
+  </ul>
+  <p class="esc"><b>⚠ Escalation</b> — Immediate permanent ban on all associated accounts. No exceptions. No appeals.</p>
+
+  <!-- APPEALS -->
+  <h2 id="appeals"><span class="num">◆</span> Punishments &amp; Appeals</h2>
+  <p>Every case is assessed at staff discretion based on three factors:</p>
+  <div class="factors">
+    <div class="factor"><b>Severity</b><span>How serious the rule breach was.</span></div>
+    <div class="factor"><b>Intent</b><span>Whether it was deliberate or accidental.</span></div>
+    <div class="factor"><b>History</b><span>Whether you have prior offences on record.</span></div>
+  </div>
+  <p>Minor offences typically escalate: warning → mute → temporary ban. Severe offences — including RWT, doxxing, cheating, and chargebacks — result in immediate permanent action with no prior warning required.</p>
+
+  <h3>15 · Appealing a Decision</h3>
+  <ul>
+    <li><span class="rid">15.a</span> Open a support ticket to begin an appeal.</li>
+    <li><span class="rid">15.b</span> Remain calm and provide any relevant context or evidence.</li>
+    <li><span class="rid">15.c</span> Do not publicly argue, complain, or campaign against a decision in server channels.</li>
+  </ul>
+  <div class="callout"><strong>Staff decisions are final.</strong> Appealing in bad faith or harassing staff during the process will result in the punishment being extended.</div>
+
+  <a href="#top" class="backtop">↑ Back to top</a>
+</article>
+</main>
+
+<footer>
+  <span class="dot">◆</span> Oasis — Game Rules · incorporated into the <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a>
+</footer>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('tt'), KEY='oasis-legal-theme';
+    function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+    var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+    if(saved==='dark'||saved==='light'){root.setAttribute('data-theme',saved);}
+    function cur(){return root.getAttribute('data-theme')||sys();}
+    function paint(){btn.textContent=cur()==='dark'?'☀':'☾';}
+    paint();
+    btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem(KEY,n);}catch(e){}paint();});
+  })();
+</script>
+</body>
+</html>

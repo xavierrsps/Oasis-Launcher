@@ -1,0 +1,53 @@
+/* Dark/gold theming for the legal overlay's TabPane. Scoped to .legal-card so it does not
+   leak onto the launcher scene (the stylesheet is added to the launcher's own Scene). The card's
+   overall translucency is done with node opacity in LegalOverlay, so these stay solid/dark. */
+
+.legal-card .tab-pane > .tab-header-area {
+    -fx-padding: 0;
+}
+
+.legal-card .tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(244, 181, 63, 0.22);
+    -fx-border-width: 0 0 1 0;
+}
+
+.legal-card .tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-padding: 8 18 8 18;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.legal-card .tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: rgba(244, 181, 63, 0.06);
+}
+
+.legal-card .tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent #f4b53f transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.legal-card .tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #b6a684;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.legal-card .tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: #f4b53f;
+}
+
+.legal-card .tab-pane > .tab-content-area {
+    -fx-background-color: #15100a;
+}
+
+.legal-card .web-view {
+    -fx-background-color: #15100a;
+}
+
+.legal-card .button:focused {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}

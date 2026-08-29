@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms of Service — Oasis</title>
+<meta name="description" content="Oasis Terms of Service — operated by OASIS-PS, Victoria, Australia.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%E2%9A%96%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<!--
+  Oasis — Terms of Service (standalone, self-contained; safe to host or open locally).
+  Operator (interim): OASIS-PS — registered Australian business name (sole trader), Victoria.
+  ON INCORPORATION: replace every "OASIS-PS" with "Oasis Games Studio Pty Ltd (ACN xxx xxx xxx)".
+  Not legal advice — a Victorian solicitor should review before commercial reliance.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spectral:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --sand:#faf6ee; --panel:#fffdf8; --ink:#211b12; --ink-soft:#5b5140;
+    --gold:#b07d24; --gold-strong:#8f6212; --palm:#2e5d3b; --line:#e6dcc7;
+    --line-soft:#efe7d6;
+    --shadow:0 1px 2px rgba(60,45,15,.05),0 8px 30px rgba(60,45,15,.06);
+    --maxw:44rem;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }}
+  :root[data-theme="dark"]{
+    --sand:#17130d; --panel:#1f1a12; --ink:#efe7d6; --ink-soft:#b6a988;
+    --gold:#e0a83c; --gold-strong:#f0c266; --palm:#6bbd82; --line:#33291b;
+    --line-soft:#2a2115; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:5rem}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--sand);color:var(--ink);
+    font-family:"Spectral",Georgia,"Times New Roman",serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  header.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--sand) 88%,transparent);
+    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+  .bar-in{max-width:64rem;margin:0 auto;padding:.7rem 1.25rem;display:flex;align-items:center;gap:1rem}
+  .wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:1.15rem;letter-spacing:.01em;
+    display:flex;align-items:center;gap:.5rem;color:var(--ink);text-decoration:none}
+  .wordmark .brandlogo{height:24px;width:auto;display:block}
+  .wordmark .brandword{font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem;color:var(--ink-soft);letter-spacing:.02em}
+  nav.docnav{margin-left:auto;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+  nav.docnav a{font-family:"Fraunces",serif;font-size:.83rem;font-weight:500;text-decoration:none;
+    color:var(--ink-soft);padding:.35rem .6rem;border-radius:.5rem;text-transform:uppercase;letter-spacing:.06em}
+  nav.docnav a:hover{color:var(--ink);background:var(--line-soft)}
+  nav.docnav a.active{color:var(--ink);background:var(--line-soft);font-weight:600}
+  .ttoggle{border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);width:2rem;height:2rem;
+    border-radius:.55rem;cursor:pointer;font-size:.95rem;display:grid;place-items:center;flex:0 0 auto}
+  .ttoggle:hover{color:var(--ink);border-color:var(--gold)}
+  .ttoggle:focus-visible,nav.docnav a:focus-visible,.toc a:focus-visible,.wordmark:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  main{max-width:var(--maxw);margin:0 auto;padding:0 1.25rem 5rem}
+  .doc{margin-top:1.5rem;padding-top:1.5rem}
+  .doc-head{border-bottom:2px solid var(--gold);padding-bottom:1.1rem;margin-bottom:.4rem}
+  .eyebrow{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.16em;font-size:.72rem;font-weight:600;color:var(--gold-strong)}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(2rem,5vw,2.7rem);line-height:1.08;
+    margin:.35rem 0 .5rem;letter-spacing:-.01em;text-wrap:balance}
+  .meta{font-size:.85rem;color:var(--ink-soft);margin:0}
+  .lead{font-size:1.12rem;color:var(--ink);margin:1.3rem 0 0}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.34rem;line-height:1.2;margin:2.6rem 0 .2rem;
+    padding-top:.6rem;scroll-margin-top:5rem;text-wrap:balance;display:flex;gap:.7rem;align-items:center}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;width:1.75em;height:1.75em;
+    border-radius:50%;background:color-mix(in srgb,var(--gold) 15%,transparent);
+    border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);color:var(--gold-strong);
+    font-size:.72em;font-weight:600;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.02rem;margin:1.5rem 0 .1rem;color:var(--ink)}
+  p{margin:.75rem 0}
+  a{color:var(--palm);text-decoration-thickness:1px;text-underline-offset:2px}
+  strong{font-weight:600}
+  ul,ol{margin:.6rem 0;padding-left:1.35rem}
+  li{margin:.32rem 0}
+  li::marker{color:var(--gold)}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1.05rem 1.25rem;margin:1.6rem 0 .5rem;box-shadow:var(--shadow)}
+  .toc p{font-family:"Fraunces",serif;text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;font-weight:600;color:var(--ink-soft);margin:0 0 .5rem}
+  .toc ol{columns:2;column-gap:2rem;margin:0;padding-left:1.1rem;font-size:.92rem}
+  .toc a{color:var(--ink-soft);text-decoration:none}
+  .toc a:hover{color:var(--palm);text-decoration:underline}
+  @media (max-width:34rem){.toc ol{columns:1}}
+  hr.rule{border:none;border-top:1px solid var(--line);margin:3.5rem 0 0}
+  .backtop{font-family:"Fraunces",serif;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);text-decoration:none;display:inline-block;margin-top:1rem}
+  .backtop:hover{color:var(--palm)}
+  footer{max-width:var(--maxw);margin:0 auto;padding:2.5rem 1.25rem;border-top:1px solid var(--line);color:var(--ink-soft);font-size:.85rem;text-align:center}
+  footer a{color:var(--ink-soft)} footer .dot{color:var(--gold)}
+</style>
+</head>
+<body>
+<span id="top"></span>
+<header class="bar">
+  <div class="bar-in">
+    <a class="wordmark" href="index.html"><img class="brandlogo" src="logo.png" alt="Oasis"><span class="brandword">Legal</span></a>
+    <nav class="docnav" aria-label="Documents">
+      <a href="terms.html" class="active" aria-current="page">Terms of Service</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="rules.html">Game Rules</a>
+    </nav>
+    <button class="ttoggle" id="tt" title="Toggle light / dark" aria-label="Toggle light or dark theme">◑</button>
+  </div>
+</header>
+
+<main>
+<article class="doc">
+  <div class="doc-head">
+    <div class="eyebrow">Oasis Private Server</div>
+    <h1>Terms of Service</h1>
+    <p class="meta">Effective 29 August 2026 · Operated by OASIS-PS · oasis-ps.com</p>
+  </div>
+  <p class="lead">These Terms are the agreement between you and the operator of Oasis. Please read them — by using Oasis you agree to be bound by them.</p>
+
+  <div class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#t1">Agreement &amp; acceptance</a></li>
+      <li><a href="#t2">Changes to these Terms</a></li>
+      <li><a href="#t3">Who may use Oasis</a></li>
+      <li><a href="#t4">Your account</a></li>
+      <li><a href="#t5">Game Rules &amp; acceptable use</a></li>
+      <li><a href="#t6">Licence to play</a></li>
+      <li><a href="#t7">Virtual content &amp; purchases</a></li>
+      <li><a href="#t8">Chargebacks &amp; payment disputes</a></li>
+      <li><a href="#t9">Refunds</a></li>
+      <li><a href="#t10">Our intellectual property</a></li>
+      <li><a href="#t11">Content you submit</a></li>
+      <li><a href="#t12">Service “as is” — no warranty</a></li>
+      <li><a href="#t13">Limitation of liability</a></li>
+      <li><a href="#t14">Indemnification</a></li>
+      <li><a href="#t15">Suspension &amp; termination</a></li>
+      <li><a href="#t16">Governing law &amp; disputes</a></li>
+      <li><a href="#t17">General</a></li>
+    </ol>
+  </div>
+
+  <h2 id="t1"><span class="num">1.</span> Agreement &amp; acceptance</h2>
+  <p>These Terms of Service, together with our <a href="privacy.html">Privacy Policy</a> and our <a href="rules.html">Game Rules</a> (together, the “Terms”), govern your access to and use of the Oasis game, launcher, website, in-game store, Discord community and all related services (together, the “Service”), provided by <strong>OASIS-PS</strong>, a registered Australian business name under which the operator trades (“Oasis”, “we”, “us”, “our”).</p>
+  <p>These Terms form a legally binding contract. By creating an account, or by downloading, installing, accessing or otherwise using any part of the Service, you confirm that you have read, understood and agree to be bound by them. If you do not agree, do not use the Service. We may record your acceptance — including the date, time and IP address — when you register and when you make a purchase. Please keep a copy of these Terms for your records.</p>
+
+  <h2 id="t2"><span class="num">2.</span> Changes to these Terms</h2>
+  <p>We may update these Terms from time to time — for example to reflect changes in the law, new features, security requirements, or improvements to clarity. When we make a material change we will post the updated Terms with a new effective date and, where practical, notify you in-game, on our website or in our Discord. Your continued use of the Service after a change takes effect means you accept the updated Terms. Any purchase is governed by the Terms in force at the time you make it.</p>
+
+  <h2 id="t3"><span class="num">3.</span> Who may use Oasis</h2>
+  <p>Oasis does not set a minimum age to create an account or play. However, our Discord community is subject to Discord’s own minimum-age requirement, and you must be capable of forming a binding contract with us to accept these Terms.</p>
+  <p>If you are under the age of legal majority where you live, you may use the Service only with the knowledge and consent of a parent or legal guardian who agrees to these Terms on your behalf and is responsible for your activity, including any purchases.</p>
+  <p>You may not use the Service if you are currently banned from it, or if doing so would break any law that applies to you.</p>
+
+  <h2 id="t4"><span class="num">4.</span> Your account</h2>
+  <p>You are responsible for keeping your login details secure and for everything that happens on your account. Do not share your credentials. If you believe your account has been accessed without your permission, contact us at <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> as soon as possible.</p>
+  <p><strong>No ownership.</strong> Your account, your character and everything on it remain our property. You are granted a personal right to use them under these Terms; you have no ownership or monetary interest in an account and may not sell, rent, share, gift or transfer one to anyone else.</p>
+
+  <h2 id="t5"><span class="num">5.</span> Game Rules &amp; acceptable use</h2>
+  <p>Our <a href="rules.html">Game Rules</a> are part of these Terms and are incorporated by reference. You agree to follow the current version of the Rules at all times. Any use of the Service that breaks the Rules falls outside the permission we grant you in Section 6 and is prohibited. In short, you agree not to cheat, bot, exploit bugs, engage in real-world trading, scam, harass others, evade bans, or attack or disrupt the Service or other players. The Rules set out the full detail and the consequences.</p>
+
+  <h2 id="t6"><span class="num">6.</span> Licence to play</h2>
+  <p>We grant you a limited, personal, non-exclusive, non-transferable, revocable licence to access and enjoy the Service and its virtual content for your own private, non-commercial entertainment, strictly in line with these Terms. This licence ends immediately if your account is terminated. Except where the law says otherwise or we give you written permission, you may not copy, resell, rent, sub-licence, reverse engineer, decompile, modify, tamper with, or create derivative works from any part of the Service, its client, its code, or its content.</p>
+
+  <h2 id="t7"><span class="num">7.</span> Virtual content &amp; purchases</h2>
+  <p><strong>7.1 What it is.</strong> The Service lets you obtain in-game currency, items, ranks, donator perks, cosmetics and other digital content (“Virtual Content”), whether earned in game, purchased from our store, or received from another player where the Service allows it.</p>
+  <p><strong>7.2 Licensed, not sold.</strong> You do not own any Virtual Content, no matter how you obtained it or what you paid. What you receive is a personal, revocable, non-transferable licence to use that Virtual Content within Oasis only. Any amount you pay is for that licence and for the entertainment of using it — not for property.</p>
+  <p><strong>7.3 No real-world value.</strong> Virtual Content exists only inside Oasis, has no real-world or monetary value, and cannot be exchanged, sold, cashed out or transferred for money or anything of value outside the Service. We may adjust, rebalance, re-price, replace or remove any Virtual Content at any time. If we permanently retire something you recently purchased, we will provide a reasonable replacement.</p>
+  <p><strong>7.4 Immediate delivery.</strong> Purchased Virtual Content is delivered automatically to the account you choose at checkout, as soon as your payment is confirmed. You are responsible for selecting the correct account. Delivery is complete, and the purchase fully provided, at the moment the content is credited to that account, as shown in our server logs.</p>
+  <p><strong>7.5 All sales final.</strong> Because Virtual Content is delivered immediately and cannot be returned, all purchases are final and non-refundable, except: (a) where we fail to deliver because of a fault on our side; (b) a verified duplicate charge; (c) where a refund is required by law, including under the Australian Consumer Law. See Section 9.</p>
+  <p><strong>7.6 EU &amp; UK consumers.</strong> If you are a consumer in the EU or UK, by completing checkout you expressly ask us to deliver the digital content immediately and acknowledge that you therefore lose the statutory 14-day right to cancel once delivery begins. Your other mandatory statutory rights are unaffected.</p>
+  <p><strong>7.7 Payment authorization.</strong> By making a purchase you confirm that: (a) you are the lawful holder of the payment method, or you have the express permission of the person who owns it; (b) you are old enough to enter into this transaction, or a parent or guardian who owns the payment method has authorized it; and (c) the billing details you provide are accurate. You agree not to reverse or dispute a legitimate, delivered purchase (see Section 8). We may record the IP address, account and consent details of each purchase and share them with our payment providers in connection with any dispute.</p>
+  <p><strong>7.8 Verification &amp; large purchases.</strong> For any purchase — and especially for large or unusual ones — we may verify your identity and your right to use the payment method, delay or split delivery pending verification, set purchase limits, or decline and refund the transaction. If you decline reasonable verification, we may cancel and refund the purchase.</p>
+
+  <h2 id="t8"><span class="num">8.</span> Chargebacks &amp; payment disputes</h2>
+  <p><strong>8.1 Talk to us first.</strong> If you think a charge is wrong or was not authorized, contact us at <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> and give us a reasonable chance (at least 10 business days) to look into it before starting a chargeback, PayPal dispute or bank reversal. In almost every case we can resolve it with you directly.</p>
+  <p><strong>8.2 Consequences of an improper dispute.</strong> If you start a chargeback or reversal on Virtual Content that was properly delivered, then, to the extent the law allows, we may: suspend or terminate every account you own or control; remove any or all Virtual Content on those accounts, whether or not it relates to the disputed charge; treat the reversed amount plus any fees charged to us as a debt you owe us; bar you from future purchases; and recover our reasonable costs.</p>
+  <p><strong>8.3 Putting it right.</strong> If a dispute is withdrawn or resolved in our favour, or you repay the reversed amount and any fees, we may — but do not have to — restore the account and its content.</p>
+  <p>Nothing here removes any statutory right you have to dispute a genuinely unauthorized or faulty charge; this Section describes the contractual consequences for your licence and accounts when a properly delivered purchase is reversed.</p>
+
+  <h2 id="t9"><span class="num">9.</span> Refunds</h2>
+  <p>Refunds are governed by Section 7.5. In addition, and unless the law requires otherwise, we will not refund purchases where: you were scammed by another player in game (we will try to help you recover, but the Rules warn against this risk); your account has been suspended or terminated for breaking these Terms or the Rules; you used unauthorized software or exploits; or you simply changed your mind or chose to stop playing. To request a refund, contact <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> with as much detail as possible. Approved refunds go back to the original payment method, and the related Virtual Content is removed. Your rights under the Australian Consumer Law and other mandatory laws are unaffected.</p>
+
+  <h2 id="t10"><span class="num">10.</span> Our intellectual property</h2>
+  <p>The Oasis name, logo, client, launcher, website, game content, code, graphics, and all other materials we provide are owned by us or our licensors and are protected by law. The limited licence in Section 6 does not give you any ownership of them. You may not use our branding or content outside the Service without our written permission.</p>
+
+  <h2 id="t11"><span class="num">11.</span> Content you submit</h2>
+  <p>When you post or transmit content through the Service — chat, forum posts, support messages, names, and similar — you keep whatever rights you already have in it, and you grant us a worldwide, royalty-free licence to host, store, display, reproduce and moderate that content for the purpose of operating and improving the Service. You are responsible for what you submit, and you must not submit anything unlawful, infringing, or in breach of the Rules. Public areas are public — do not share anything you would not want others to see.</p>
+
+  <h2 id="t12"><span class="num">12.</span> Service “as is” — no warranty</h2>
+  <p>The Service is provided “as is” and “as available”, without warranties of any kind, to the maximum extent permitted by law. We do not promise that the Service will be uninterrupted, error-free, secure, or free from bugs, downtime, data loss, rollbacks or resets, and we do not guarantee any particular availability or that any specific content will remain available. Private-server games are experimental by nature and may change or close. You use the Service at your own risk.</p>
+  <p>If you are a consumer in Australia, our services come with guarantees that cannot be excluded under the Australian Consumer Law. Nothing in these Terms excludes, restricts or modifies those guarantees. Where the law permits us to limit our liability for failing to meet such a guarantee, our liability is limited to re-supplying the service (or the reasonable cost of re-supplying it).</p>
+
+  <h2 id="t13"><span class="num">13.</span> Limitation of liability</h2>
+  <p>To the maximum extent permitted by law, we will not be liable for any indirect, incidental, special, consequential or punitive losses, or for loss of data, virtual content, progress, goodwill or profits, arising out of or connected with your use of (or inability to use) the Service. Subject to Section 12, our total liability to you for any and all claims relating to the Service will not exceed the greater of the amount you paid us in the three months before the event giving rise to the claim, or AUD 75. Nothing in these Terms excludes or limits liability that cannot be excluded or limited by law — including liability under the Australian Consumer Law, and, in some places, liability for death or personal injury caused by our negligence, or for fraud.</p>
+
+  <h2 id="t14"><span class="num">14.</span> Indemnification</h2>
+  <p>To the extent permitted by law, you agree to indemnify and hold us harmless from any claims, damages, losses and reasonable costs (including legal fees) arising from your breach of these Terms or the Rules, your misuse of the Service, or your infringement of anyone else’s rights.</p>
+
+  <h2 id="t15"><span class="num">15.</span> Suspension &amp; termination</h2>
+  <p>We may suspend or terminate your access to the Service, and any account we reasonably believe you own or control, with or without notice, if you breach these Terms or the Rules, if we reasonably consider it necessary to protect the Service or our community, if you fail to pay or reverse a payment, or if we stop offering the Service. On termination for breach, your licence and all Virtual Content, balances and entitlements end immediately and are forfeited without compensation, and, except where the law requires, you are not entitled to a refund. You may stop using the Service at any time. Sections 7–14, 16 and 17 survive termination.</p>
+
+  <h2 id="t16"><span class="num">16.</span> Governing law &amp; disputes</h2>
+  <p>These Terms, and any dispute arising out of or relating to them or the Service, are governed by the laws of the State of Victoria and the Commonwealth of Australia, and you and we submit to the non-exclusive jurisdiction of the courts of the State of Victoria. Before bringing any formal claim, you agree to contact us first at <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a> and try in good faith to resolve the matter informally for at least 30 days. Nothing in this Section limits any rights you have under the Australian Consumer Law or other mandatory laws that cannot be excluded by agreement.</p>
+
+  <h2 id="t17"><span class="num">17.</span> General</h2>
+  <p>These Terms, the Privacy Policy and the Game Rules are the entire agreement between you and us about the Service. If any part is found unenforceable, the rest stays in force. Our not enforcing a right on one occasion is not a waiver of it. You may not assign your rights under these Terms; we may assign ours in connection with a transfer of the Service. We are not liable for failures caused by events beyond our reasonable control. Questions about these Terms? Contact <a href="mailto:support@oasis-ps.com">support@oasis-ps.com</a>.</p>
+
+  <a href="#top" class="backtop">↑ Back to top</a>
+</article>
+</main>
+
+<footer>
+  <span class="dot">◆</span> Oasis — Terms of Service · OASIS-PS · effective 29 August 2026 · <a href="privacy.html">Privacy</a> · <a href="rules.html">Rules</a>
+</footer>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('tt'), KEY='oasis-legal-theme';
+    function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+    var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+    if(saved==='dark'||saved==='light'){root.setAttribute('data-theme',saved);}
+    function cur(){return root.getAttribute('data-theme')||sys();}
+    function paint(){btn.textContent=cur()==='dark'?'☀':'☾';}
+    paint();
+    btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem(KEY,n);}catch(e){}paint();});
+  })();
+</script>
+</body>
+</html>
