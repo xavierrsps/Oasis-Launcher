@@ -7,11 +7,14 @@ package com.oasis.launcher.model;
  * <pre>
  * {
  *   "verifyUrl": "https://your-domain/verify",   // launcher POSTs {"code":"123456"} here
- *   "inviteUrl": "https://discord.gg/xxxxxxx"      // opened by the Discord button
+ *   "inviteUrl": "https://discord.gg/xxxxxxx",     // opened by the Discord button
+ *   "codeUrl":   "https://discord.com/users/<botId>" // optional: where "Get a code" sends the user
  * }
  * </pre>
  */
 public class DiscordConfig {
     public String verifyUrl;
     public String inviteUrl;
+    /** Optional deep link to where the user gets a code (e.g. the bot's DM). Falls back to {@link #inviteUrl}. */
+    public String codeUrl;
 }

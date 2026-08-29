@@ -34,6 +34,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -964,16 +965,36 @@ public class LauncherWindow {
     }
 
     private void showOtpEntry() {
-        Label hint = new Label("In Discord, message the Oasis bot to get a one-time code, then enter it here.");
+        Label hint = new Label("In Discord, run /link (or DM the Oasis bot the word “link”) to get a "
+                + "6-digit code, then paste it here — it verifies on its own.");
         hint.setFont(Fonts.body(11));
         hint.setStyle("-fx-text-fill: " + DIM + ";");
         hint.setWrapText(true);
 
         TextField code = new TextField();
-        code.setPromptText("Enter code");
+        code.setPromptText("6-digit code");
         code.setFont(Fonts.body(14));
         code.setStyle(dropdownStyle() + " -fx-text-fill: " + TEXT + "; -fx-highlight-fill: " + GOLD_DIM
                 + "; -fx-padding: 8 10 8 10;");
+        // Keep the field to digits (max 6), but sanitise rather than reject so a pasted "  123456\n" still lands.
+        code.setTextFormatter(new TextFormatter<>(change -> {
+            if (!change.isContentChange()) {
+                return change;
+            }
+            String next = change.getControlNewText();
+            if (next.matches("\\d{0,6}")) {
+                return change;
+            }
+            String digits = next.replaceAll("\\D", "");
+            if (digits.length() > 6) {
+                digits = digits.substring(0, 6);
+            }
+            change.setRange(0, change.getControlText().length());
+            change.setText(digits);
+            change.setCaretPosition(digits.length());
+            change.setAnchor(digits.length());
+            return change;
+        }));
 
         Label err = new Label();
         err.setFont(Fonts.body(11));
@@ -990,12 +1011,26 @@ public class LauncherWindow {
                 + " -fx-cursor: hand;");
         Runnable submit = () -> doVerify(code.getText(), verify, err);
         verify.setOnAction(e -> submit.run());
-        code.setOnAction(e -> submit.run());
+        code.setOnAction(e -> {
+            if (!verify.isDisabled()) {
+                submit.run();
+            }
+        });
+        // Auto-verify the moment a full 6-digit code is present (typed or pasted); clear any stale error as they edit.
+        code.textProperty().addListener((obs, old, val) -> {
+            if (err.isVisible()) {
+                err.setVisible(false);
+                err.setManaged(false);
+            }
+            if (val != null && val.length() == 6 && !verify.isDisabled()) {
+                submit.run();
+            }
+        });
 
         Label getCode = new Label("Get a code in Discord →");
         getCode.setFont(Fonts.body(11));
         getCode.setStyle("-fx-text-fill: #9aa4f5; -fx-cursor: hand;");
-        getCode.setOnMouseClicked(e -> openDiscord());
+        getCode.setOnMouseClicked(e -> openCodeSource());
         Label cancel = new Label("Cancel");
         cancel.setFont(Fonts.body(11));
         cancel.setStyle("-fx-text-fill: " + DIM2 + "; -fx-cursor: hand;");
@@ -1020,29 +1055,20 @@ public class LauncherWindow {
         verify.setText("Checking…");
         final String verifyUrl = discordConfig != null ? discordConfig.verifyUrl : null;
         background.submit(() -> {
-            String message = null;
-            DiscordLink link = null;
-            try {
-                link = discordVerifier.verify(verifyUrl, code).orElse(null);
-                if (link == null) {
-                    message = "That code didn't match. Grab a fresh one from the bot and try again.";
-                }
-            } catch (IllegalStateException notReady) {
-                message = "Discord linking isn't switched on yet — check back soon.";
-            } catch (Exception ex) {
-                message = "Couldn't reach the verify service. Try again in a moment.";
+            DiscordVerifier.VerifyOutcome outcome = discordVerifier.verify(verifyUrl, code);
+            if (outcome.status != DiscordVerifier.Status.LINKED) {
+                // Verifier already logged the underlying cause; this line ties it to the user-facing result.
+                logger.warn("Discord verify unsuccessful ({}): {}", outcome.status, outcome.userMessage);
             }
-            final String fMsg = message;
-            final DiscordLink fLink = link;
             Platform.runLater(() -> {
-                if (fLink != null) {
-                    discordLink = fLink;
-                    discordLinkStore.save(fLink);
+                if (outcome.ok()) {
+                    discordLink = outcome.link;
+                    discordLinkStore.save(outcome.link);
                     renderDiscordArea();
                 } else {
                     verify.setDisable(false);
                     verify.setText("Verify");
-                    err.setText(fMsg);
+                    err.setText(outcome.userMessage);
                     err.setManaged(true);
                     err.setVisible(true);
                 }
@@ -1096,6 +1122,16 @@ public class LauncherWindow {
                 ? discordConfig.inviteUrl
                 : "https://discord.com/app";
         openLink(url);
+    }
+
+    /** Where "Get a code in Discord →" points: the bot DM ({@code codeUrl}) if set, else the invite. */
+    private void openCodeSource() {
+        String codeUrl = discordConfig != null ? discordConfig.codeUrl : null;
+        if (codeUrl != null && !codeUrl.isBlank()) {
+            openLink(codeUrl);
+        } else {
+            openDiscord();
+        }
     }
 
     // ── Server status ───────────────────────────────────────────────────────
