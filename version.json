@@ -1,5 +1,5 @@
 {
-  "version": "2.0.9",
+  "version": "2.1.0",
   "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
-  "notes": "Smoother Discord linking: paste a code and it verifies itself, with clearer messages when the verify service can't be reached (and behind-the-scenes logging to diagnose failures). Installs over the old one and reopens itself."
+  "notes": "In-app legal centre: Terms, Privacy and Game Rules now open right inside the launcher, with a one-time acceptance to start playing. Plus a smoother 'Log in with Discord' — approve it in your browser and the launcher links you automatically (the 6-digit code still works too). Installs over the old one and reopens itself."
 }
