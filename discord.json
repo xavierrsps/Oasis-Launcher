@@ -3,6 +3,6 @@
   "verifyUrl": "https://oasis.oasis-ps.com/api/verify",
   "inviteUrl": "https://discord.gg/Ggr3kpUZcz",
   "codeUrl": "https://discord.com/users/1525907864181542984",
-  "oauthStartUrl": "",
-  "oauthPollUrl": ""
+  "oauthStartUrl": "https://oasis.oasis-ps.com/api/oauth/start",
+  "oauthPollUrl": "https://oasis.oasis-ps.com/api/oauth/poll"
 }
