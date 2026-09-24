@@ -1,6 +1,7 @@
 {
-  "version": "2026-07-13",
-  "filename": "Oasis-NXT-910.exe",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/Oasis-NXT-910.exe",
-  "sha256": "98144ca6464586c3b4c85ce8c4ee1f4e06cdcc7453e73978e6068c598d1faff5"
+  "version": "rev240-2026-09-25",
+  "filename": "Oasis.jar",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/client-rev240-20260925/Oasis.jar",
+  "sha256": "4a1edcd6fd968c273a0d8a10d64ecd01b278b1af44fd294fbde5b588b74c793c",
+  "size": 33070776
 }

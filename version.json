@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/latest/download/OasisLauncherSetup.msi",
-  "notes": "In-app legal centre: Terms, Privacy and Game Rules now open right inside the launcher, with a one-time acceptance to start playing. Plus a smoother 'Log in with Discord' — approve it in your browser and the launcher links you automatically (the 6-digit code still works too). Installs over the old one and reopens itself."
+  "version": "2.2.0",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.0/OasisLauncherSetup.msi",
+  "notes": "OasisOS is now LIVE for pre-alpha testing! Pick the OasisOS tab and hit Play — the launcher downloads the rev-240 client and drops you straight into the world. Installs over the old one and reopens itself."
 }
