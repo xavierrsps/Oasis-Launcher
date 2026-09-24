@@ -9,6 +9,7 @@ import com.oasis.launcher.account.DiscordOAuth;
 import com.oasis.launcher.account.DiscordVerifier;
 import com.oasis.launcher.launch.ClientLauncher;
 import com.oasis.launcher.model.Account;
+import com.oasis.launcher.model.ClientManifest;
 import com.oasis.launcher.model.DiscordConfig;
 import com.oasis.launcher.model.DiscordLink;
 import com.oasis.launcher.model.NewsFeed;
@@ -16,6 +17,7 @@ import com.oasis.launcher.model.ServerStatus;
 import com.oasis.launcher.model.VersionInfo;
 import com.oasis.launcher.update.LauncherSelfUpdater;
 import com.oasis.launcher.update.ManifestFetcher;
+import com.oasis.launcher.update.Downloader;
 import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
@@ -141,10 +143,10 @@ public class LauncherWindow {
                     "A modern RuneScape (rev 949) base — currently in production.",
                     "3", "#f0cf67", "#a9781f", false),
             new GameBase("oasisos", "OasisOS", "Old School · rev 240",
-                    "Migrating content, releasing soon.",
+                    "Pre-alpha — live for testing.",
                     "OasisOS — Old School, reforged",
-                    "An Old School base — migrating the Oasis content across now.",
-                    "OS", "#9adfa6", "#3f7d4e", false));
+                    "An Old School base — join the pre-alpha and help us test.",
+                    "OS", "#9adfa6", "#3f7d4e", true));
 
     /** A selectable game base: its identity, status line, hero copy, and emblem colours. */
     private static final class GameBase {
@@ -1445,15 +1447,41 @@ public class LauncherWindow {
         }
         background.submit(() -> {
             try {
+                // 1. Fetch the client manifest (url + sha256 for Oasis.jar).
+                Platform.runLater(() -> statusLabel.setText("Checking client…"));
+                ClientManifest manifest = fetcher.fetchClientManifest();
+                if (manifest == null || manifest.url == null || manifest.url.isBlank()) {
+                    throw new IllegalStateException("client-manifest.json missing a download URL");
+                }
+
+                // 2. Ensure <dataDir>/Oasis.jar is present + current (hash-verified).
+                //    Downloader skips the download if the local file already matches,
+                //    so repeat Plays are instant.
+                Platform.runLater(() -> statusLabel.setText("Downloading client…"));
+                new Downloader().download(
+                        manifest.url,
+                        com.oasis.launcher.util.Platform.clientJar(),
+                        manifest.sha256,
+                        (downloaded, total) -> Platform.runLater(() -> {
+                            fileLabel.setText(formatProgress(downloaded, total));
+                            if (total > 0) {
+                                progressBar.setProgress((double) downloaded / total);
+                            }
+                        }));
+
+                // 3. Launch the client with the same runtime + optional auto-login.
+                Platform.runLater(() -> statusLabel.setText("Starting client…"));
                 gameLauncher.launch(ClientLauncher.DEFAULT_HEAP_MB, username, password);
                 Platform.runLater(() -> {
+                    fileLabel.setText("");
                     statusLabel.setText("Client launched — see you in Oasis!");
                     background.schedule(() -> Platform.runLater(stage::close), 2, TimeUnit.SECONDS);
                 });
             } catch (Exception ex) {
-                logger.error("Failed to launch client", ex);
+                logger.error("Failed to download/launch client", ex);
                 Platform.runLater(() -> {
-                    statusLabel.setText("Client not available yet — coming with the next update.");
+                    statusLabel.setText("Couldn't start the client — " + ex.getMessage());
+                    fileLabel.setText("");
                     updatePlayGate();
                 });
             }

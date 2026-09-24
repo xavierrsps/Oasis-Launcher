@@ -1,6 +1,7 @@
 package com.oasis.launcher.update;
 
 import com.google.gson.Gson;
+import com.oasis.launcher.model.ClientManifest;
 import com.oasis.launcher.model.DiscordConfig;
 import com.oasis.launcher.model.NewsFeed;
 import com.oasis.launcher.model.ServerStatus;
@@ -38,6 +39,7 @@ public class ManifestFetcher {
     public static final String NEWS_URL    = RAW_BASE + "updates.json";
     public static final String STATUS_URL  = RAW_BASE + "status.json";
     public static final String DISCORD_URL = RAW_BASE + "discord.json";
+    public static final String CLIENT_MANIFEST_URL = RAW_BASE + "client-manifest.json";
 
     private final HttpClient http;
     private final Gson gson = new Gson();
@@ -73,6 +75,11 @@ public class ManifestFetcher {
     /** Discord integration config (verify + invite URLs). */
     public DiscordConfig fetchDiscordConfig() throws IOException, InterruptedException {
         return gson.fromJson(fetch(DISCORD_URL), DiscordConfig.class);
+    }
+
+    /** Game client descriptor (url + sha256) used by the Play flow to download-then-launch Oasis.jar. */
+    public ClientManifest fetchClientManifest() throws IOException, InterruptedException {
+        return gson.fromJson(fetch(CLIENT_MANIFEST_URL), ClientManifest.class);
     }
 
     private String fetch(String url) throws IOException, InterruptedException {
