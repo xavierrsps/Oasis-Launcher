@@ -37,7 +37,9 @@ public class ManifestFetcher {
 
     public static final String VERSION_URL = RAW_BASE + "version.json";
     public static final String NEWS_URL    = RAW_BASE + "updates.json";
-    public static final String STATUS_URL  = RAW_BASE + "status.json";
+    // Live server status comes from the game VM itself (nginx serves the file the running server
+    // writes every 15s), NOT the GitHub repo — so the player-count reflects the world in real time.
+    public static final String STATUS_URL  = "http://play.oasis-ps.com/status.json";
     public static final String DISCORD_URL = RAW_BASE + "discord.json";
     public static final String CLIENT_MANIFEST_URL = RAW_BASE + "client-manifest.json";
 
