@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.0/OasisLauncherSetup.msi",
-  "notes": "OasisOS is now LIVE for pre-alpha testing! Pick the OasisOS tab and hit Play — the launcher downloads the rev-240 client and drops you straight into the world. Installs over the old one and reopens itself."
+  "version": "2.2.1",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.1/OasisLauncherSetup.msi",
+  "notes": "The Online status pill now shows the real live player count straight from the game server. Installs over your existing launcher and reopens itself."
 }
