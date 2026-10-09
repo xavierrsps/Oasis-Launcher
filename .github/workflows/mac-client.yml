@@ -78,6 +78,7 @@ jobs:
             --mac-package-identifier com.oasis.client \
             --java-options "-Xmx768m" \
             --java-options "-Dsun.java2d.metal=true" \
+            --java-options "--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED" \
             --vendor "Oasis" \
             --dest out
           ls -la out
