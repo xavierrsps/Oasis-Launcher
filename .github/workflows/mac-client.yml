@@ -1,0 +1,86 @@
+name: Build macOS client (.dmg)
+
+# Packages the Oasis client (Oasis.jar) into a double-click macOS .dmg with a BUNDLED Java
+# runtime via jpackage, so a player just downloads, opens, drags to Applications and plays —
+# no Terminal, no "install Java". Built on GitHub's macOS runners (jpackage can only build for
+# the host OS). Produces both Apple-Silicon (arm64) and Intel (x64) images.
+#
+# Trigger manually (Actions ▸ Build macOS client ▸ Run workflow) or via `gh workflow run`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: "App version (digits only, e.g. 1.0.0)"
+        required: false
+        default: "1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14   # Apple Silicon
+            arch: arm64
+          - runner: macos-13   # Intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Set up Temurin JDK 21 (${{ matrix.arch }})
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Download the current client jar (from client-manifest.json)
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          URL=$(curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/client-manifest.json | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
+          echo "Client jar: $URL"
+          curl -fsSL "$URL" -o input/Oasis.jar
+          ls -la input
+
+      - name: Package .dmg with jpackage (bundled runtime)
+        run: |
+          set -euo pipefail
+          jpackage \
+            --type dmg \
+            --name Oasis \
+            --app-version "${{ github.event.inputs.app_version || '1.0.0' }}" \
+            --input input \
+            --main-jar Oasis.jar \
+            --main-class net.runelite.client.RuneLite \
+            --runtime-image "$JAVA_HOME" \
+            --mac-package-identifier com.oasis.client \
+            --java-options "-Xmx768m" \
+            --java-options "-Dsun.java2d.metal=true" \
+            --vendor "Oasis" \
+            --dest out
+          ls -la out
+          mv "out/Oasis-${{ github.event.inputs.app_version || '1.0.0' }}.dmg" "out/Oasis-macOS-${{ matrix.arch }}.dmg"
+          ls -la out
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Oasis-macOS-${{ matrix.arch }}
+          path: out/Oasis-macOS-${{ matrix.arch }}.dmg
+
+      - name: Publish to the rolling mac-client-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=mac-client-latest
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Oasis — macOS client" \
+              --notes "Double-click .dmg with a bundled Java runtime. Apple Silicon = arm64, Intel = x64. First launch on an unsigned build: right-click the app ▸ Open (once)." \
+              --latest=false
+          fi
+          gh release upload "$TAG" "out/Oasis-macOS-${{ matrix.arch }}.dmg" --clobber
