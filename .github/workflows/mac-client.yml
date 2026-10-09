@@ -4,8 +4,6 @@ name: Build macOS client (.dmg)
 # runtime via jpackage, so a player just downloads, opens, drags to Applications and plays —
 # no Terminal, no "install Java". Built on GitHub's macOS runners (jpackage can only build for
 # the host OS). Produces both Apple-Silicon (arm64) and Intel (x64) images.
-#
-# Trigger manually (Actions ▸ Build macOS client ▸ Run workflow) or via `gh workflow run`.
 
 on:
   workflow_dispatch:
@@ -18,8 +16,28 @@ on:
 permissions:
   contents: write
 
+env:
+  TAG: mac-client-latest
+
 jobs:
+  # Single writer: ensure the rolling release exists BEFORE the matrix uploads to it (no race).
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --target main \
+              --title "Oasis — macOS client" \
+              --notes "Double-click .dmg with a bundled Java runtime. Apple Silicon = arm64, Intel = x64. First launch on an unsigned build: right-click the app then Open (once)."
+          fi
+
   build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -38,20 +56,21 @@ jobs:
 
       - name: Download the current client jar (from client-manifest.json)
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           mkdir -p input out
-          URL=$(curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/client-manifest.json | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
+          URL=$(curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/client-manifest.json" | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
           echo "Client jar: $URL"
           curl -fsSL "$URL" -o input/Oasis.jar
           ls -la input
 
       - name: Package .dmg with jpackage (bundled runtime)
         run: |
-          set -euo pipefail
+          set -euxo pipefail
+          VER="${{ github.event.inputs.app_version || '1.0.0' }}"
           jpackage \
             --type dmg \
             --name Oasis \
-            --app-version "${{ github.event.inputs.app_version || '1.0.0' }}" \
+            --app-version "$VER" \
             --input input \
             --main-jar Oasis.jar \
             --main-class net.runelite.client.RuneLite \
@@ -62,7 +81,7 @@ jobs:
             --vendor "Oasis" \
             --dest out
           ls -la out
-          mv "out/Oasis-${{ github.event.inputs.app_version || '1.0.0' }}.dmg" "out/Oasis-macOS-${{ matrix.arch }}.dmg"
+          mv "out/Oasis-$VER.dmg" "out/Oasis-macOS-${{ matrix.arch }}.dmg"
           ls -la out
 
       - name: Upload build artifact
@@ -71,16 +90,9 @@ jobs:
           name: Oasis-macOS-${{ matrix.arch }}
           path: out/Oasis-macOS-${{ matrix.arch }}.dmg
 
-      - name: Publish to the rolling mac-client-latest release
+      - name: Publish .dmg to the rolling release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          TAG=mac-client-latest
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" \
-              --title "Oasis — macOS client" \
-              --notes "Double-click .dmg with a bundled Java runtime. Apple Silicon = arm64, Intel = x64. First launch on an unsigned build: right-click the app ▸ Open (once)." \
-              --latest=false
-          fi
-          gh release upload "$TAG" "out/Oasis-macOS-${{ matrix.arch }}.dmg" --clobber
+          set -euxo pipefail
+          gh release upload "$TAG" "out/Oasis-macOS-${{ matrix.arch }}.dmg" --repo "$GITHUB_REPOSITORY" --clobber
