@@ -32,6 +32,8 @@ jobs:
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
               --target main \
+              --latest=false \
+              --prerelease \
               --title "Oasis — macOS client" \
               --notes "Double-click .dmg with a bundled Java runtime. Apple Silicon = arm64, Intel = x64. First launch on an unsigned build: right-click the app then Open (once)."
           fi
