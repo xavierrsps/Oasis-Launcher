@@ -62,8 +62,8 @@ public class ClientLauncher {
     };
 
     /** Launches the game client without any auto-login credentials. */
-    public void launch(int maxHeapMb) throws IOException {
-        launch(maxHeapMb, null, null);
+    public Process launch(int maxHeapMb) throws IOException {
+        return launch(maxHeapMb, null, null);
     }
 
     /**
@@ -73,7 +73,7 @@ public class ClientLauncher {
      * <p>If {@code username} is null or blank, no credentials are written
      * to the client process.
      */
-    public void launch(int maxHeapMb, String username, String password) throws IOException {
+    public Process launch(int maxHeapMb, String username, String password) throws IOException {
         // Dev convenience: -Doasis.client.jar=<path> overrides which jar we spawn.
         // Lets you point the launcher at game-client/build/libs/Oasis.jar without
         // copying it into the launcher's data dir.
@@ -95,7 +95,12 @@ public class ClientLauncher {
         cmd.add(javaExe);
         cmd.add("-Xmx" + maxHeapMb + "m");
         cmd.add("-Xms" + Math.min(256, maxHeapMb) + "m");
-        cmd.add("-Dsun.java2d.opengl=true");
+        // NOTE: do NOT force -Dsun.java2d.opengl=true here. Forcing the Java2D
+        // OpenGL pipeline crashes AWT/Swing startup on machines with old,
+        // virtualised or flaky GPU drivers (the client window never appears —
+        // "launcher closes and nothing opens"). RuneLite manages its own game
+        // rendering via its GPU plugin regardless, so the default Java2D
+        // pipeline (safest on every machine) is the correct choice.
         cmd.add("-Dsun.java2d.uiScale.enabled=false");
         // Tell the client where to find its cache/plugins/profiles. Without this
         // the client falls back to ~/.oasis (dev layout). With it, the client
@@ -140,9 +145,23 @@ public class ClientLauncher {
             logger.info("Stripped JAVA_HOME (\"{}\") for client process", oldJavaHome);
         }
 
-        // Inherit stdout/stderr so client logs show up in launcher console.
+        // Inherit stdout/stderr into a LOG FILE so client crashes are never
+        // silent. Previously this was Redirect.INHERIT, but the launcher is a
+        // no-console GUI app, so the client's output (incl. any fatal stack
+        // trace) went to a void and failures looked like "nothing happened".
+        // Writing to <dataDir>/logs/client-launch.log means every launch is
+        // diagnosable and early crashes can be surfaced to the player.
         pb.redirectErrorStream(true);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        Path launchLog = Platform.logsDir().resolve("client-launch.log");
+        try {
+            Files.createDirectories(launchLog.getParent());
+            pb.redirectOutput(ProcessBuilder.Redirect.to(launchLog.toFile()));
+            logger.info("Client output -> {}", launchLog);
+        } catch (IOException logEx) {
+            logger.warn("Could not open client log {} ({}); falling back to INHERIT",
+                    launchLog, logEx.getMessage());
+            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        }
         // stdin is PIPE so we can write credentials before closing it.
         pb.redirectInput(ProcessBuilder.Redirect.PIPE);
 
@@ -167,6 +186,7 @@ public class ClientLauncher {
         }
 
         logger.info("Client process spawned (pid={})", process.pid());
+        return process;
     }
 
     /** Returns the command joined for logging. Password is never on cmd line - only via stdin. */

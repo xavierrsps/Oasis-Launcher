@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.oasis'
-version '2.2.1'
+version '2.2.2'
 
 repositories {
     mavenCentral()
@@ -757,6 +757,31 @@ tasks.register('patchJpackageImage') {
 //  - A Windows installer that creates Start Menu + Desktop shortcuts
 jlink {
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+
+    // The bundled runtime also RUNS the game client (RuneLite) via `java -jar Oasis.jar`, so it must
+    // contain every JDK module the client needs — not just the launcher's. jlink auto-detects only
+    // the launcher's modules, which omitted java.naming (logback's JNDI) → the client crashed on
+    // startup with NoClassDefFoundError: javax/naming/NamingException. Force the full set the
+    // RuneLite client needs into the image (additive = keep the auto-detected launcher modules too).
+    mergedModule {
+        additive = true
+        requires 'java.naming'
+        requires 'java.sql'
+        requires 'java.security.jgss'
+        requires 'java.security.sasl'
+        requires 'java.transaction.xa'
+        requires 'java.management.rmi'
+        requires 'jdk.management'
+        requires 'java.smartcardio'
+        requires 'jdk.zipfs'
+        requires 'jdk.crypto.cryptoki'
+        requires 'jdk.crypto.mscapi'
+        requires 'jdk.httpserver'
+        requires 'jdk.net'
+        requires 'jdk.charsets'
+        requires 'jdk.localedata'
+        requires 'java.instrument'
+    }
 
     // Installed app name (shown in Windows "Apps", Start menu, taskbar) + the exe name.
     imageName = 'Oasis'

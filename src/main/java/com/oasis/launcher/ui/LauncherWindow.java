@@ -1471,7 +1471,29 @@ public class LauncherWindow {
 
                 // 3. Launch the client with the same runtime + optional auto-login.
                 Platform.runLater(() -> statusLabel.setText("Starting client…"));
-                gameLauncher.launch(ClientLauncher.DEFAULT_HEAP_MB, username, password);
+                Process clientProc = gameLauncher.launch(ClientLauncher.DEFAULT_HEAP_MB, username, password);
+
+                // Guard against a SILENT early crash. The client is a separate
+                // process; if it dies in the first few seconds (bad GPU driver,
+                // corrupt jar, etc.) we must NOT just close the launcher leaving
+                // nothing on screen ("launcher closes and nothing opens"). Wait
+                // a short grace window: if it exits non-zero, show the real error
+                // from the client log and keep the launcher open to retry.
+                boolean exitedEarly = clientProc.waitFor(6, TimeUnit.SECONDS);
+                if (exitedEarly && clientProc.exitValue() != 0) {
+                    final int code = clientProc.exitValue();
+                    final String tail = readClientLogTail();
+                    logger.error("Client exited early with code {}. Log tail:\n{}", code, tail);
+                    Platform.runLater(() -> {
+                        statusLabel.setText("Client closed on startup (exit " + code + ")");
+                        fileLabel.setText("");
+                        showClientCrashDialog(code, tail);
+                        updatePlayGate();
+                    });
+                    return;
+                }
+
+                // Still running (or a clean exit) → treat as a successful launch.
                 Platform.runLater(() -> {
                     fileLabel.setText("");
                     statusLabel.setText("Client launched — see you in Oasis!");
@@ -1488,7 +1510,36 @@ public class LauncherWindow {
         });
     }
 
-    // ── Account management ──────────────────────────────────────────────────
+    /** Reads the last ~1.8KB of the client launch log (the tail that usually holds the error). */
+    private String readClientLogTail() {
+        try {
+            java.nio.file.Path log = com.oasis.launcher.util.Platform.logsDir().resolve("client-launch.log");
+            if (!java.nio.file.Files.exists(log)) {
+                return "(no client log was written — the client process never produced output)";
+            }
+            String all = java.nio.file.Files.readString(log, java.nio.charset.StandardCharsets.UTF_8);
+            int max = 1800;
+            return all.length() > max ? "…" + all.substring(all.length() - max) : all;
+        } catch (Exception ex) {
+            return "(could not read client log: " + ex.getMessage() + ")";
+        }
+    }
+
+    /** Shows the real client crash output so a failed launch is never silent. */
+    private void showClientCrashDialog(int exitCode, String logTail) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Client didn't start");
+        alert.setHeaderText("The game client closed right after starting (exit code " + exitCode + ").");
+        alert.setContentText("This is the client's own log — please send it to an admin if it keeps happening:");
+        javafx.scene.control.TextArea area = new javafx.scene.control.TextArea(logTail);
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setPrefSize(660, 320);
+        alert.getDialogPane().setExpandableContent(area);
+        alert.getDialogPane().setExpanded(true);
+        alert.getDialogPane().setPrefWidth(700);
+        alert.showAndWait();
+    }
 
     private void refreshAccountDropdown() {
         if (accountDropdown == null) {
