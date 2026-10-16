@@ -1,6 +1,11 @@
 {
   "updates": [
     {
+      "date": "2026-10-16",
+      "title": "Launcher 2.2.2 — Play reliability fix",
+      "body": "Fixed the Windows issue where clicking Play could close the launcher with nothing opening. The client now starts reliably on more machines (removed a graphics flag that crashed some GPU drivers), writes its own log file, and if a launch ever fails it now shows the real error instead of closing silently. Fresh installs get this automatically; if your launcher doesn't auto-update, grab the latest from the download channel."
+    },
+    {
       "date": "2026-08-27",
       "title": "Oasis 2.0 — New OSRS RuneLite Base",
       "body": "Oasis has made the jump from the old OasisPS base onto a modern Old School RuneScape foundation (rev 240) running a custom RuneLite client. It's a huge upgrade — a smoother, up-to-date client with RuneLite's quality-of-life built in, and a far stronger, more maintainable base for everything we build next. Custom content is being ported onto the new base now — big things ahead."

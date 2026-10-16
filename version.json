@@ -1,5 +1,5 @@
 {
-  "version": "2.2.1",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.1/OasisLauncherSetup.msi",
-  "notes": "The Online status pill now shows the real live player count straight from the game server. Installs over your existing launcher and reopens itself."
+  "version": "2.2.2",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.2/OasisLauncherSetup.msi",
+  "notes": "Fixes 'click Play and nothing opens' on Windows — the client now launches reliably (removed a GPU flag that crashed some machines), writes a log file, and shows a real error if it ever fails to start instead of closing silently."
 }
