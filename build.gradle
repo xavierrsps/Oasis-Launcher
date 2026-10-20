@@ -751,6 +751,50 @@ tasks.register('patchJpackageImage') {
     }
 }
 
+// ─── Rebrand the bundled runtime java.exe/javaw.exe FileDescription -> "Oasis" ──
+//
+// The launcher spawns the game client via <runtime>/bin/java.exe -jar Oasis.jar. Windows derives the
+// Task Manager "Apps" label (and taskbar identity) from that exe's FileDescription, which for a stock
+// JDK runtime is "OpenJDK Platform binary". jpackage brands the launcher's OWN exe but NOT the
+// runtime's java/javaw, so the client process inherits "OpenJDK Platform binary". We rcedit the
+// runtime's java.exe + javaw.exe FileDescription to "Oasis" in the jpackage app-image, before the MSI
+// is packed. (An AppUserModelID would only change taskbar GROUPING, not this label — confirmed via MS
+// docs — so the FileDescription edit is the correct lever.) Requires the bundled rcedit tool.
+tasks.register('brandRuntimeExes') {
+    description = 'Sets the bundled runtime java/javaw FileDescription to "Oasis" so the client shows as Oasis.'
+    group = 'build'
+
+    def rcedit = file("$projectDir/src/main/native/rcedit-x64.exe")
+    onlyIf {
+        if (!isWindows) return false
+        if (!rcedit.exists()) { logger.lifecycle('[brandRuntimeExes] rcedit-x64.exe missing — skipping; client will show "OpenJDK Platform binary".'); return false }
+        return true
+    }
+
+    doLast {
+        def appImageDir = ['Oasis', 'Oasis Launcher', 'launcher']
+                .collect { file("$buildDir/jpackage/$it") }.find { it.exists() }
+        if (appImageDir == null) {
+            throw new GradleException("brandRuntimeExes: jpackage app-image dir not found under $buildDir/jpackage")
+        }
+        def runtimeBin = new File(appImageDir, 'runtime/bin')
+        ['java.exe', 'javaw.exe'].each { exeName ->
+            def exe = new File(runtimeBin, exeName)
+            if (!exe.exists()) { logger.lifecycle("[brandRuntimeExes] ${exeName} not found — skipping"); return }
+            def res = exec {
+                ignoreExitValue = true
+                commandLine rcedit.absolutePath, exe.absolutePath,
+                        '--set-version-string', 'FileDescription', 'Oasis',
+                        '--set-version-string', 'ProductName', 'Oasis'
+            }
+            if (res.exitValue != 0) {
+                throw new GradleException("brandRuntimeExes: rcedit failed on ${exeName} (exit ${res.exitValue})")
+            }
+            println "Rebranded ${exeName} FileDescription -> Oasis"
+        }
+    }
+}
+
 // jlink + jpackage: produces a native installer that includes:
 //  - The launcher application
 //  - A minimal Java runtime (so players don't need Java installed)
@@ -834,6 +878,7 @@ afterEvaluate {
         def jpackageImageTask = tasks.findByName('jpackageImage')
         def jpackageTask = tasks.findByName('jpackage')
         def patchTask = tasks.findByName('patchJpackageImage')
+        def brandTask = tasks.findByName('brandRuntimeExes')
 
         if (jpackageImageTask && jpackageTask && patchTask) {
             // Patch MUST run after the image is built but BEFORE the MSI is packed.
@@ -842,6 +887,14 @@ afterEvaluate {
             // Belt and braces: ensure order even if dependsOn isn't enough.
             patchTask.mustRunAfter(jpackageImageTask)
             jpackageTask.mustRunAfter(patchTask)
+        }
+
+        if (jpackageImageTask && jpackageTask && brandTask) {
+            // Rebrand runtime java/javaw after the image is built, before the MSI is packed.
+            brandTask.dependsOn(jpackageImageTask)
+            jpackageTask.dependsOn(brandTask)
+            brandTask.mustRunAfter(jpackageImageTask)
+            jpackageTask.mustRunAfter(brandTask)
         }
     }
 }
