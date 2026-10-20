@@ -1,5 +1,5 @@
 {
-  "version": "2.2.2",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.2/OasisLauncherSetup.msi",
-  "notes": "Fixes 'click Play and nothing opens' on Windows — the client now launches reliably (removed a GPU flag that crashed some machines), writes a log file, and shows a real error if it ever fails to start instead of closing silently."
+  "version": "2.2.3",
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/v2.2.3/OasisLauncherSetup.msi",
+  "notes": "The game client now shows as \"Oasis\" in Windows (taskbar, Task Manager and notifications) instead of \"OpenJDK Platform binary\"."
 }

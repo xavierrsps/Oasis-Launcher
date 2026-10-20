@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.oasis'
-version '2.2.2'
+version '2.2.3'
 
 repositories {
     mavenCentral()
@@ -615,11 +615,17 @@ tasks.register('compileWrapper') {
     outputs.file(outputFile)
 
     onlyIf {
-        if (!isWindows || !sourceFile.exists()) return false
-        // Skip silently if gcc is not on PATH (MSI still works, just without env-var stripping wrapper)
-        def gccFound = ['where', 'gcc'].execute().waitFor() == 0
-        if (!gccFound) logger.lifecycle('[compileWrapper] gcc not found on PATH — skipping wrapper EXE. MSI will still work.')
-        return gccFound
+        // DISABLED (2026-10): the native wrapper is NOT production-ready and must not be activated.
+        //  1. REAL_LAUNCHER_NAME in oasis-wrapper.c is the stale "kryos-java-launcher.exe" (never
+        //     updated to "oasis-java-launcher.exe"), so the wrapper would fail to find the real
+        //     launcher and pop an error box instead of starting the app.
+        //  2. patchJpackageImage's app-image dir detection ("Oasis Launcher"/"launcher") does not
+        //     match the actual jlink image dir ("Oasis").
+        // It has in fact NEVER shipped (gcc was absent on every prior release build, so compileWrapper
+        // always skipped, which left patchJpackageImage skipped too). The Java-side env-var stripping
+        // in ClientLauncher already protects the game client. Re-enable ONLY after fixing BOTH bugs
+        // and testing an installed MSI end-to-end.
+        false
     }
 
     doLast {
