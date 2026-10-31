@@ -1,6 +1,11 @@
 {
   "updates": [
     {
+      "date": "2026-11-01",
+      "title": "Client updated to rev-241",
+      "body": "The Oasis client has been upgraded to the Old School RuneScape revision 241 base, matching the server. Your launcher downloads the new client automatically on next launch — no action needed. This keeps us current with the latest OSRS client base and unlocks newer content and quality-of-life features."
+    },
+    {
       "date": "2026-10-16",
       "title": "Launcher 2.2.2 — Play reliability fix",
       "body": "Fixed the Windows issue where clicking Play could close the launcher with nothing opening. The client now starts reliably on more machines (removed a graphics flag that crashed some GPU drivers), writes its own log file, and if a launch ever fails it now shows the real error instead of closing silently. Fresh installs get this automatically; if your launcher doesn't auto-update, grab the latest from the download channel."

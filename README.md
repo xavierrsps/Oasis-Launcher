@@ -14,4 +14,4 @@ The installer (`OasisLauncherSetup.exe`) and the client are attached to this rep
 
 JavaFX launcher, package `com.oasis.launcher`. Build with `./gradlew fatJar` (runnable jar) or `./gradlew jpackage` (Windows MSI). Requires JDK 21.
 
-> Currently being rewired for the new **OSRS RuneLite (rev-240)** base — the jump up from the old OasisPS base. See Recent Updates.
+> Running the new **OSRS RuneLite (rev-241)** base — the jump up from the old OasisPS base. See Recent Updates.
