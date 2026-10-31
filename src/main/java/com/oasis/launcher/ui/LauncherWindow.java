@@ -142,7 +142,7 @@ public class LauncherWindow {
                     "Oasis3 — RuneScape, reforged",
                     "A modern RuneScape (rev 949) base — currently in production.",
                     "3", "#f0cf67", "#a9781f", false),
-            new GameBase("oasisos", "OasisOS", "Old School · rev 240",
+            new GameBase("oasisos", "OasisOS", "Old School · rev 241",
                     "Pre-alpha — live for testing.",
                     "OasisOS — Old School, reforged",
                     "An Old School base — join the pre-alpha and help us test.",
