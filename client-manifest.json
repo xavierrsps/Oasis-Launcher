@@ -1,7 +1,7 @@
 {
-  "version": "rev241-2026-11-24",
+  "version": "rev241-2026-11-24-fix",
   "filename": "Oasis.jar",
-  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/client-rev241-20261124/Oasis.jar",
-  "sha256": "3a28c599bb8608588c6a9aedd5ab0a4e633b46a5d1455cca634edd725b2faa16",
-  "size": 33728506
+  "url": "https://github.com/xavierrsps/Oasis-Launcher/releases/download/client-rev241-20261124-fix/Oasis.jar",
+  "sha256": "802467da13aace941da9a706e33fc7b06e42e8e43d91a6d2e3867a085eff156e",
+  "size": 33769854
 }
